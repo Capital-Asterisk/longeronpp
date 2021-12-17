@@ -1,7 +1,11 @@
 enable_testing()
-
-add_executable(hello hello.cpp)
-target_link_libraries(hello gtest_main)
-
 include(GoogleTest)
-gtest_discover_tests(hello)
+
+function(lgrn_add_test name sources libs)
+    add_executable("test_${name}" ${sources})
+    target_link_libraries("test_${name}" gtest_main ${libs})
+    gtest_discover_tests("test_${name}")
+endfunction()
+
+lgrn_add_test(hierarchicalbitset hierarchical_bitset.cpp longeron)
+lgrn_add_test(id_registry id_management/registry.cpp longeron)
