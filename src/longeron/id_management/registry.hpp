@@ -5,7 +5,7 @@
 #pragma once
 
 #include "null.hpp"
-#include "../hierarchical_bitset.hpp"
+#include "../containers/hierarchical_bitset.hpp"
 #include "../utility/enum_traits.hpp"
 
 namespace lgrn

@@ -4,7 +4,7 @@
  */
 #pragma once
 
-#include "utility/bitmath.hpp"
+#include "../utility/bitmath.hpp"
 
 #include <array>
 #include <bitset>

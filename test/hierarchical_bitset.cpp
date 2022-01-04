@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: MIT
  * SPDX-FileCopyrightText: 2021 Neal Nicdao <chrisnicdao0@gmail.com>
  */
-#include <longeron/hierarchical_bitset.hpp>
+#include <longeron/containers/hierarchical_bitset.hpp>
 
 #include <gtest/gtest.h>
 
