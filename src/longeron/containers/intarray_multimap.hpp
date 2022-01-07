@@ -4,8 +4,10 @@
  */
 #pragma once
 
-#include <utility>
+
+#include <algorithm>
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include <cassert>
@@ -18,7 +20,9 @@ class PartitionUtils
 {
 public:
 
-    struct Span
+    static constexpr INT_T const smc_null = ~INT_T(0);
+
+    struct DataSpan
     {
         SIZE_T m_offset;
         PARTITION_SIZE_T m_size;
@@ -28,6 +32,7 @@ public:
     {
         SIZE_T m_offset{0};
         INT_T m_partitionNum{0};
+        INT_T m_partitionCount{0};
         PARTITION_SIZE_T m_size{0};
     };
 
@@ -44,7 +49,7 @@ public:
         // Check remaining space
         if (rLastFree.m_size < prtnSize)
         {
-            return NewPartition{ ~SIZE_T(0), ~INT_T(0) }; // no space available
+            return NewPartition{ 0, smc_null }; // no space available
         }
 
         // New partition located on the left of free partition
@@ -65,14 +70,17 @@ template<typename INT_T, typename SIZE_T, typename PARTITION_SIZE_T>
 struct PartitionDescStl
 {
     using Utils_t = PartitionUtils<INT_T, SIZE_T, PARTITION_SIZE_T>;
-    using Span_t = typename Utils_t::Span;
+    using DataSpan_t = typename Utils_t::DataSpan;
     using Free_t = typename Utils_t::Free;
+
+    static constexpr INT_T const smc_null = Utils_t::smc_null;
 
     void resize(INT_T maxIds)
     {
         m_idToData.resize(maxIds);
-        m_idToPartition.resize(maxIds, ~INT_T(0));
-        m_partitionToId.resize(maxIds, ~INT_T(0));
+        m_idToPartition.resize(maxIds, smc_null);
+
+        m_partitionToId.resize(maxIds, smc_null);
         m_free.reserve(maxIds / 2);
     }
 
@@ -88,26 +96,112 @@ struct PartitionDescStl
     {
         m_partitionToId[partition] = id;
         m_idToPartition[id] = partition;
-        Span_t &rSpan = m_idToData[id];
+        DataSpan_t &rSpan = m_idToData[id];
         rSpan.m_offset = offset;
         rSpan.m_size = size;
     }
 
-    void erase(INT_T id)
+    Free_t erase(INT_T id)
     {
         assert(exists(id));
 
         // get partition number
-        INT_T const partition = std::exchange(m_idToPartition[id], ~INT_T(0));
-        m_partitionToId[id] = ~INT_T(0);
-        Span_t const data = m_idToData[id];
+        INT_T const partition = std::exchange(m_idToPartition[id], smc_null);
+        m_partitionToId[id] = smc_null;
+        DataSpan_t const data = m_idToData[id];
 
-        m_free.push_back({data.m_offset, partition, data.m_size});
+        Free_t free{data.m_offset, partition, 1, data.m_size};
+
+        if (m_free.empty())
+        {
+            m_free.push_back(std::move(free));
+        }
+        else
+        {
+            auto it = std::upper_bound(
+                    std::begin(m_free), std::end(m_free), free,
+            [] (Free_t const& lhs, Free_t const& rhs) -> bool {
+                return lhs.m_partitionNum > rhs.m_partitionNum;
+            });
+            m_free.insert(it, std::move(free));
+        }
+
+        return free;
+    }
+
+    struct DataMoved
+    {
+        SIZE_T m_offsetSrc;
+        SIZE_T m_offsetDst;
+        SIZE_T m_size;
+    };
+
+    /**
+     * @return
+     */
+    DataMoved pack_step(SIZE_T maxMovesHint) noexcept
+    {
+        if (m_free.empty())
+        {
+            return {0, 0, 0};
+        }
+        Free_t &rFirst = m_free.back();
+        Free_t &rNext = (m_free.size() == 1) ? m_freeLast : m_free[m_free.size() - 2];
+
+        // strategy: shift partitions between rFirst and rNext left to replace
+        //           rFirst, merging it into rNext
+
+        SIZE_T const offsetSrc = rFirst.m_offset + rFirst.m_size;
+        SIZE_T const offsetDst = rFirst.m_offset;
+
+        SIZE_T movedData = 0;
+        SIZE_T movedPrtn = 0;
+        INT_T currentPrtn = rFirst.m_partitionNum;
+
+        while (true)
+        {
+            INT_T const nextPrtn = currentPrtn + rFirst.m_partitionCount;
+            INT_T const nextId = m_partitionToId[nextPrtn];
+
+            if (nextId != smc_null)
+            {
+                // move next partition left to replace current free partition
+                m_partitionToId[currentPrtn] = nextId;
+                m_partitionToId[nextPrtn] = smc_null;
+
+                m_idToPartition[nextId] = currentPrtn;
+                m_idToData[nextId].m_offset -= rFirst.m_size;
+
+                movedPrtn ++;
+                movedData += m_idToData[nextId].m_size;
+
+                currentPrtn ++;
+            }
+            else
+            {
+                // hit next free partition, merge rFirst into rNext
+                assert(nextPrtn == rNext.m_partitionNum);
+                rNext.m_offset          -= rFirst.m_size;
+                rNext.m_partitionNum    -= rFirst.m_partitionCount;
+                rNext.m_partitionCount  += rFirst.m_partitionCount;
+                rNext.m_size            += rFirst.m_size;
+
+                m_free.pop_back(); // invalidates rFirst
+                break;
+            }
+
+            if (movedData > maxMovesHint)
+            {
+                break; // maximum moves exceeded
+            }
+        }
+
+        return {offsetSrc, offsetDst, movedData};
     }
 
     bool exists(INT_T id) const noexcept
     {
-        return m_idToPartition[id] != ~INT_T(0);
+        return m_idToPartition[id] != smc_null;
     }
 
     std::vector<INT_T> m_partitionToId;
@@ -116,7 +210,7 @@ struct PartitionDescStl
     std::vector<typename Utils_t::Free> m_free;
 
     std::vector<INT_T> m_idToPartition;
-    std::vector<Span_t> m_idToData;
+    std::vector<DataSpan_t> m_idToData;
 };
 
 template< typename INT_T, typename DATA_T,
@@ -130,19 +224,71 @@ class IntArrayMultiMap
     using Utils_t           = PartitionUtils<INT_T, std::size_t, partition_size_t>;
 
     using NewPartition_t    = typename Utils_t::NewPartition;
+    using Free_t            = typename Utils_t::Free;
+
+    using DataSpan_t        = typename Utils_t::DataSpan;
+    using DataMoved_t       = typename PartitionDesc_t::DataMoved;
 
 public:
-    IntArrayMultiMap(INT_T capacity)
+
+    class Span
     {
-        resize(capacity);
+    public:
+        Span(DATA_T* data, std::size_t size)
+         : m_data(data)
+         , m_size(size)
+        { }
+
+        constexpr DATA_T& operator[](partition_size_t i) const { return m_data[i]; }
+        constexpr DATA_T* begin() const { return m_data; }
+        constexpr DATA_T* end() const { return m_data + m_size; }
+
+    private:
+        DATA_T* m_data;
+        std::size_t m_size;
+    };
+
+    IntArrayMultiMap(INT_T dataCapacity, INT_T idCapacity)
+    {
+        resize_data(dataCapacity);
+        resize_ids(idCapacity);
     }
+
+    IntArrayMultiMap(IntArrayMultiMap const& copy) = delete; // TODO
+
+    IntArrayMultiMap(IntArrayMultiMap&& move)
+        : m_partitions{std::move(move.m_partitions)}
+        , m_allocator{std::move(move.m_allocator)}
+        , m_data{std::exchange(move.m_data, nullptr)}
+        , m_dataSize{std::exchange(move.m_dataSize, 0)}
+    { }
 
     ~IntArrayMultiMap()
     {
         if (nullptr != m_data)
         {
-            deallocate();
+            // call destructors
+            for (INT_T prtnRead = 0; prtnRead < m_partitions.last_free().m_partitionNum; prtnRead ++)
+            {
+                INT_T const id = m_partitions.m_partitionToId[prtnRead];
+                if (id != PartitionDesc_t::smc_null)
+                {
+                    DataSpan_t const& span = m_partitions.m_idToData[id];
+                    std::destroy_n(&m_data[span.m_offset], span.m_size);
+                }
+            }
+
+            alloc_traits_t::deallocate(m_allocator, m_data, m_dataSize);
         }
+    }
+
+    bool contains(INT_T id)
+    {
+        if (! m_partitions.id_in_range(id))
+        {
+            return false;
+        }
+        return m_partitions.exists(id);
     }
 
     void resize_ids(INT_T capacity)
@@ -150,19 +296,66 @@ public:
         m_partitions.resize(capacity);
     }
 
-    void resize(INT_T capacity)
+    void resize_data(INT_T capacity)
     {
         DATA_T *newData = alloc_traits_t::allocate(m_allocator, capacity);
 
+        Free_t &rLastFree = m_partitions.last_free();
+
         if (m_data != nullptr)
         {
-            // TODO: move
-            assert(1);
-        }
-        m_data = newData;
+            // Move all existing partitions into the newly allocated space
+            // Additionally, this also removes fragmentation
 
-        m_partitions.last_free().m_size += capacity - m_dataSize;
-        m_dataSize = capacity;
+            INT_T prtnWrite = 0;
+            std::size_t writeOffset = 0;
+
+            for (INT_T prtnRead = 0; prtnRead < rLastFree.m_partitionNum; prtnRead ++)
+            {
+                INT_T const id = m_partitions.m_partitionToId[prtnRead];
+
+                // null partitions are free space
+                if (id != PartitionDesc_t::smc_null)
+                {
+                    DataSpan_t &rSpan = m_partitions.m_idToData[id];
+                    std::size_t const offset = rSpan.m_offset;
+                    partition_size_t const size = rSpan.m_size;
+
+                    // Make sure partitions fit in new space
+                    assert(writeOffset <= capacity);
+
+                    std::uninitialized_move_n(
+                            &m_data[offset], size, &newData[writeOffset]);
+
+                    if (prtnWrite != prtnRead)
+                    {
+                        m_partitions.m_partitionToId[prtnRead] = PartitionDesc_t::smc_null;
+                        m_partitions.m_partitionToId[prtnWrite] = id;
+                        m_partitions.m_idToPartition[id] = prtnWrite;
+                        rSpan.m_offset = writeOffset;
+                    }
+
+                    writeOffset += size;
+                    prtnWrite ++;
+                }
+            }
+
+            m_partitions.m_free.clear();
+            rLastFree.m_offset = writeOffset;
+            rLastFree.m_size = capacity - writeOffset;
+
+        }
+        else
+        {
+            rLastFree.m_offset = 0;
+            rLastFree.m_size = capacity;
+        }
+
+        alloc_traits_t::deallocate(
+                m_allocator,
+                std::exchange(m_data, newData),
+                std::exchange(m_dataSize, capacity));
+
     }
 
     template<typename IT_T>
@@ -176,9 +369,55 @@ public:
         return data;
     }
 
+    DATA_T* emplace(INT_T id, std::initializer_list<DATA_T> list)
+    {
+        return emplace(id, std::begin(list), std::end(list));
+    }
+
+    void pack(std::size_t maxMoveHint = ~std::size_t(0))
+    {
+        std::size_t moveTotal = 0;
+
+        while ( !m_partitions.m_free.empty() && (moveTotal < maxMoveHint) )
+        {
+            DataMoved_t const moved
+                    = m_partitions.pack_step(maxMoveHint - moveTotal);
+
+            if (moved.m_size != 0)
+            {
+                // move some data
+                DATA_T *pRead = &m_data[moved.m_offsetSrc];
+                DATA_T *pWrite = &m_data[moved.m_offsetDst];
+
+                for (size_t i = 0; i < moved.m_size; i++)
+                {
+                    ::new(pWrite)DATA_T(std::move(*pRead));
+
+                    pRead ++;
+                    pWrite ++;
+                }
+
+                moveTotal += moved.m_size;
+            }
+        }
+
+
+    }
+
     void erase(INT_T id)
     {
-        m_partitions.erase(id);
+        Free_t free = m_partitions.erase(id);
+        std::destroy_n(&m_data[free.m_offset], free.m_size);
+    }
+
+    Span operator[] (INT_T id) noexcept
+    {
+        if (!m_partitions.exists(id) || !m_partitions.id_in_range(id))
+        {
+            return {nullptr, 0};
+        }
+        DataSpan_t const &span = m_partitions.m_idToData[id];
+        return {&m_data[span.m_offset], span.m_size};
     }
 
 private:
@@ -189,11 +428,6 @@ private:
                 = Utils_t::create_partition(size, m_partitions.last_free());
          m_partitions.assign_id(id, prtn.m_partitionNum, size, prtn.m_offset);
          return &m_data[prtn.m_offset];
-    }
-
-    void deallocate()
-    {
-        alloc_traits_t::deallocate(m_allocator, std::exchange(m_data, nullptr), m_dataSize);
     }
 
     PartitionDesc_t m_partitions;

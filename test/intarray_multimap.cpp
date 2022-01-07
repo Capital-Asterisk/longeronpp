@@ -8,16 +8,27 @@
 
 using lgrn::IntArrayMultiMap;
 
-
 TEST(IntArrayMultiMap, Basic)
 {
-    lgrn::IntArrayMultiMap<int, float> multimap(20);
-    multimap.resize_ids(5);
-    auto in = {2.0f, 3.0f, 4.0f};
-    float* data = multimap.emplace(1, in.begin(), in.end());
+    lgrn::IntArrayMultiMap<unsigned int, float> multimap(30, 10);
 
-    auto inB = {9.0f, 9.0f, 9.0f, 9.0f, 9.0f, 9.0f, 9.0f};
-    float* dataB = multimap.emplace(2, inB.begin(), inB.end());
+    multimap.emplace(0, {1.0f, 2.0f});
+    multimap.emplace(1, {3.0f, 4.0f});
+    multimap.emplace(2, {5.0f, 6.0f});
+
+    EXPECT_TRUE(multimap.contains(0));
+    EXPECT_TRUE(multimap.contains(2));
+    EXPECT_FALSE(multimap.contains(3));
+
+    EXPECT_EQ(multimap[0][0], 1.0f);
+    EXPECT_EQ(multimap[2][1], 6.0f);
 
     multimap.erase(1);
+
+    EXPECT_FALSE(multimap.contains(1));
+
+    multimap.pack();
+
+    EXPECT_EQ(multimap[0][0], 1.0f);
+    EXPECT_EQ(multimap[2][1], 6.0f);
 }
