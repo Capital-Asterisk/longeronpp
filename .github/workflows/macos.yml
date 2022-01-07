@@ -1,0 +1,47 @@
+name: macOS
+
+on:
+  pull_request:
+  push:
+  release:
+    types: published
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    strategy:
+      matrix:
+        config: [Release, Debug]
+
+    env:
+      CMAKE_C_COMPILER_LAUNCHER: ccache
+      CMAKE_CXX_COMPILER_LAUNCHER: ccache
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 1
+        submodules: recursive
+
+    - uses: hendrikmuhs/ccache-action@v1
+      with:
+        key: macos-${{ matrix.config }}
+
+    - name: Install dependencies
+      run: brew install cmake
+
+    - name: Configure
+      shell: bash
+      run: |
+        cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+    - name: Compile Unit Tests
+      shell: bash
+      run: |
+        cmake --build build --parallel --config ${{ matrix.config }}
+
+    - name: Run Unit Tests
+      shell: bash
+      run: |
+        ctest --schedule-random --progress --output-on-failure --parallel --no-tests error --build-config ${{ matrix.config }} --test-dir build/test
