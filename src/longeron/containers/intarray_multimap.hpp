@@ -161,7 +161,8 @@ struct PartitionDescStl
         while (true)
         {
             INT_T const nextPrtn = currentPrtn + rFirst.m_partitionCount;
-            INT_T const nextId = m_partitionToId[nextPrtn];
+            INT_T const nextId = (nextPrtn < m_partitionToId.size())
+                               ? m_partitionToId[nextPrtn] : smc_null;
 
             if (nextId != smc_null)
             {
@@ -366,6 +367,15 @@ public:
         partition_size_t size = std::distance(first, last);
         DATA_T* data = create_uninitialized(id, size);
         std::uninitialized_move(first, last, data);
+        return data;
+    }
+
+    DATA_T* emplace(INT_T id, partition_size_t size)
+    {
+        assert(m_partitions.id_in_range(id));
+        assert(!m_partitions.exists(id));
+        DATA_T* data = create_uninitialized(id, size);
+        std::uninitialized_default_construct_n(data, size);
         return data;
     }
 

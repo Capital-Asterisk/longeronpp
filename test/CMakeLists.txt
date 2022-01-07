@@ -7,5 +7,6 @@ function(lgrn_add_test name sources libs)
     gtest_discover_tests("test_${name}")
 endfunction()
 
-lgrn_add_test(hierarchicalbitset hierarchical_bitset.cpp longeron)
+lgrn_add_test(hierarchical_bitset hierarchical_bitset.cpp longeron)
+lgrn_add_test(intarray_multimap intarray_multimap.cpp longeron)
 lgrn_add_test(id_registry id_management/registry.cpp longeron)
