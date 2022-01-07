@@ -4,6 +4,7 @@ include(GoogleTest)
 function(lgrn_add_test name sources libs)
     add_executable("test_${name}" ${sources})
     target_link_libraries("test_${name}" gtest_main ${libs})
+    set_target_properties("test_${name}" PROPERTIES EXPORT_COMPILE_COMMANDS TRUE)
     gtest_discover_tests("test_${name}")
 endfunction()
 
