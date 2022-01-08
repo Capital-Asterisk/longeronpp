@@ -276,7 +276,7 @@ while (running)
     // Delete DataA components
     system_delete_a(world.m_dataA, world.m_toDelete);
     // Delete DataB components, can run in parallel with above
-    system_delete_a(world.m_dataB, world.m_toDelete);  
+    system_delete_b(world.m_dataB, world.m_toDelete);  
     
     // clear deleted entities for next frame
     world.m_toDelete.reset();
