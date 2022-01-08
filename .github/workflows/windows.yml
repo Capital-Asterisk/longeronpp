@@ -37,7 +37,7 @@ jobs:
     - name: Configure (MSVC)
       if: ${{ matrix.compiler == 'msvc' }}
       run: |
-        cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.config }} -DCMAKE_SYSTEM_VERSION="10.0.19041.0"
+        cmake -B build -DLONGERON_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=${{ matrix.config }} -DCMAKE_SYSTEM_VERSION="10.0.19041.0"
 
     - name: Configure (ClangCL)
       if: ${{ matrix.compiler == 'clangcl' }}
