@@ -6,9 +6,9 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
+
 using lgrn::IntArrayMultiMap;
-
-
 
 // Basic usage
 TEST(IntArrayMultiMap, Basic)
@@ -148,3 +148,4 @@ TEST(IntArrayMultiMap, UniqueOwnership)
 
     EXPECT_EQ(*multimap[1][0], 69.0f);
 }
+
