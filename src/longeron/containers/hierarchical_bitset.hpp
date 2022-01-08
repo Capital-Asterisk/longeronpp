@@ -185,11 +185,17 @@ public:
     /**
      * @brief Test if a bit is set
      *
-     * @param i [in] Bit number
+     * @param bit [in] Bit number
      *
      * @return True if bit is set, False if not, 3.14159 if the universe broke
      */
-    bool test(std::size_t bit) const;
+    bool test(std::size_t bit) const
+    {
+        bounds_check(bit);
+        RowBit const pos = bit_at(bit);
+
+        return bit_test(m_blocks[m_rows[0].m_offset + pos.m_block], pos.m_bit);
+    }
 
     /**
      * @brief Set all bits to 1
@@ -218,7 +224,7 @@ public:
     /**
      * @brief Set a bit to 1
      *
-     * @param i [in] Bit to set
+     * @param bit [in] Bit to set
      */
     void set(std::size_t bit)
     {
@@ -229,7 +235,7 @@ public:
     /**
      * @brief Reset a bit to 0
      *
-     * @param i [in] Bit to reset
+     * @param bit [in] Bit to reset
      */
     void reset(std::size_t bit)
     {
@@ -237,6 +243,22 @@ public:
         block_reset_recurse(0, bit_at(bit));
     }
 
+    /**
+     * @brief Reset all bits to 0
+     */
+    void reset() noexcept
+    {
+        std::fill(m_blocks.get(), m_blocks.get() + m_blockCount, 0);
+        m_count = 0;
+    }
+
+    /**
+     * @brief Get first set bit after a specified bit
+     *
+     * @param bit [in] Bits after this bit index will be 'searched' for ones
+     *
+     * @return Bit index of next found bit, end of container if not found.
+     */
     std::size_t next(std::size_t bit) const noexcept
     {
         RowBit const nextPos = next(0, bit_at(bit));
@@ -409,17 +431,9 @@ private:
 
     std::size_t m_blockCount{0};
     std::unique_ptr<BLOCK_INT_T[]> m_blocks;
+
 }; // class HierarchicalBitset
 
-
-template <typename BLOCK_INT_T>
-bool HierarchicalBitset<BLOCK_INT_T>::test(std::size_t bit) const
-{
-    bounds_check(bit);
-    RowBit const pos = bit_at(bit);
-
-    return bit_test(m_blocks[m_rows[0].m_offset + pos.m_block], pos.m_bit);
-}
 
 template <typename BLOCK_INT_T>
 template<typename IT_T, typename CONVERT_T>
