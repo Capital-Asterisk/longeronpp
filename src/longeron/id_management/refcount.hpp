@@ -20,7 +20,9 @@ public:
 
     RefCount() = default;
     RefCount(RefCount&& move) = default;
-    RefCount(std::size_t capacity) { resize(capacity); };
+    RefCount(std::size_t capacity)
+     : base_t( capacity, 0 )
+    { };
 
     // Delete copy
     RefCount(RefCount const& copy) = delete;
@@ -30,7 +32,7 @@ public:
     RefCount& operator=(RefCount&& move)
     {
         assert(only_zeros_remaining(0));
-        base_t(std::move(move));
+        base_t::operator=(std::move(move));
         return *this;
     }
 
@@ -42,9 +44,9 @@ public:
 
     bool only_zeros_remaining(std::size_t start) const noexcept
     {
-        for (std::size_t i = start; i < size(); i ++)
+        for(auto it = std::next(begin(), start); it != end(); std::advance(it))
         {
-            if (0 != (*this)[i])
+            if (0 != *it)
             {
                 return false;
             }
