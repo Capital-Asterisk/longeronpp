@@ -26,4 +26,5 @@ if (NOT raylib_FOUND) # If there's none, fetch and build raylib
 
 endif()
 
+add_subdirectory(circuits)
 add_subdirectory(fallingsand)
