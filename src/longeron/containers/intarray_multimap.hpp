@@ -240,14 +240,17 @@ public:
          , m_size(size)
         { }
 
-        constexpr DATA_T& operator[](partition_size_t i) const { return m_data[i]; }
-        constexpr DATA_T* begin() const { return m_data; }
-        constexpr DATA_T* end() const { return m_data + m_size; }
+        constexpr std::size_t size() const noexcept { return m_size; }
+        constexpr DATA_T& operator[](partition_size_t i) const noexcept { return m_data[i]; }
+        constexpr DATA_T* begin() const noexcept { return m_data; }
+        constexpr DATA_T* end() const noexcept { return m_data + m_size; }
 
     private:
         DATA_T* m_data;
         std::size_t m_size;
     };
+
+    IntArrayMultiMap() = default;
 
     IntArrayMultiMap(INT_T dataCapacity, INT_T idCapacity)
     {
