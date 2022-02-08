@@ -107,7 +107,7 @@ struct PartitionDescStl
 
         // get partition number
         INT_T const partition = std::exchange(m_idToPartition[id], smc_null);
-        m_partitionToId[id] = smc_null;
+        m_partitionToId[partition] = smc_null;
         DataSpan_t const data = m_idToData[id];
 
         Free_t free{data.m_offset, partition, 1, data.m_size};

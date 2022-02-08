@@ -3,18 +3,25 @@
  * SPDX-FileCopyrightText: 2021 Neal Nicdao <chrisnicdao0@gmail.com>
  */
 #include <longeron/containers/intarray_multimap.hpp>
+#include <longeron/id_management/registry.hpp>
 
 #include <gtest/gtest.h>
 
 #include <array>
+#include <random>
+#include <unordered_map>
+#include <vector>
 
+using lgrn::IdRegistry;
 using lgrn::IntArrayMultiMap;
+
+using id_t = unsigned int;
 
 // Basic usage
 TEST(IntArrayMultiMap, Basic)
 {
     // allocate with 16 max floats, and 4 IDs from 0 to 3
-    IntArrayMultiMap<unsigned int, float> multimap(16, 4);
+    IntArrayMultiMap<id_t, float> multimap(16, 4);
 
     // Emplace 3 2-element partitions
     multimap.emplace(0, {1.0f, 2.0f});
@@ -68,7 +75,7 @@ TEST(IntArrayMultiMap, Ownership)
     EXPECT_EQ(dataB[0].use_count(), 1);
 
     {
-        IntArrayMultiMap<unsigned int, Shared_t> multimap(32, 8);
+        IntArrayMultiMap<id_t, Shared_t> multimap(32, 8);
 
         // Insert multiple copies
         multimap.emplace(0, {dataA});
@@ -123,13 +130,7 @@ using Unique_t = std::unique_ptr<float>;
 
 TEST(IntArrayMultiMap, UniqueOwnership)
 {
-    IntArrayMultiMap<unsigned int, Unique_t> multimap(4, 2);
-
-
-
-    // initializer lists can't do moves
-    //multimap.emplace(0, {std::make_unique<float>(96.0f)});
-    //multimap.emplace(1, {std::move(data)});
+    IntArrayMultiMap<id_t, Unique_t> multimap(4, 2);
 
     // default construct by passing in size, then move in
 
@@ -148,4 +149,89 @@ TEST(IntArrayMultiMap, UniqueOwnership)
 
     EXPECT_EQ(*multimap[1][0], 69.0f);
 }
+
+// Repetitively delete and create random-sized partitions
+// Compare against an std::unordered_map< ..., std::vector<...> >
+TEST(IntArrayMultiMap, RandomCreationAndDeletion)
+{
+    constexpr int const sc_seed         = 69;
+    constexpr int const sc_repetitions  = 32;
+
+    constexpr int const sc_idMax        = 256;
+
+    // Partitions to create per iteration
+    constexpr int const sc_createMin    = 10;
+    constexpr int const sc_createMax    = 70;
+
+    // Sizes of partitions to create
+    constexpr int const sc_prtnMin      = 1;
+    constexpr int const sc_prtnMax      = 10;
+
+    constexpr int const sc_valueMin     = -99999;
+    constexpr int const sc_valueMax     = 99999;
+
+    std::mt19937 gen(sc_seed);
+    std::uniform_int_distribution<int> distCreate(sc_createMin, sc_createMax);
+    std::uniform_int_distribution<int> distPrtnSize(sc_prtnMin, sc_prtnMax);
+    std::uniform_int_distribution<int> distValue(sc_valueMin, sc_valueMax);
+    std::uniform_int_distribution<int> distFlip(0, 1);
+
+    std::unordered_map< id_t, std::vector<int> > control;
+    IntArrayMultiMap<id_t, int> multimap(sc_idMax * sc_createMax, sc_idMax);
+    IdRegistry<id_t, true> ids(sc_idMax);
+
+    for (int i = 0; i < sc_repetitions; i ++)
+    {
+        // Create a random number of partitions
+
+        int const toCreate = distCreate(gen);
+
+        for (int j = 0; j < toCreate; j ++)
+        {
+            int const prtnSize = distPrtnSize(gen);
+            id_t const id = ids.create();
+
+            std::vector<int> values(prtnSize);
+            std::generate(values.begin(), values.end(),
+                          [&distValue, &gen] { return distValue(gen); });
+
+            multimap.emplace(id, values.cbegin(), values.cend());
+            control.emplace(id, std::move(values));
+        }
+
+        // Remove about half of them
+
+        std::vector<id_t> toErase;
+
+        // No iterators for IntArrayMultiMap or IdRegistry yet,
+        // Use control to get existing IDs
+        for (auto const & [id, _] : control)
+        {
+            if (distFlip(gen) == 1)
+            {
+                toErase.push_back(id);
+            }
+        }
+
+        for (id_t id : toErase)
+        {
+            multimap.erase(id);
+            control.erase(id);
+            ids.remove(id);
+        }
+
+        multimap.pack();
+
+        // Check if all values still match
+
+        for (auto const & [id, controlValues] : control)
+        {
+            for (int j = 0; j < controlValues.size(); j ++)
+            {
+                EXPECT_EQ(controlValues[j], multimap[id][j]);
+            }
+        }
+    }
+}
+
 
