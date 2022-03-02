@@ -44,7 +44,7 @@ public:
 
     bool only_zeros_remaining(std::size_t start) const noexcept
     {
-        for(auto it = std::next(begin(), start); it != end(); std::advance(it))
+        for(auto it = std::next(base_t::begin(), start); it != base_t::end(); std::advance(it, 1))
         {
             if (0 != *it)
             {
