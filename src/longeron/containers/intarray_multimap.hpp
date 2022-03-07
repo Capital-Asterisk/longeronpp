@@ -69,9 +69,10 @@ public:
 template<typename INT_T, typename SIZE_T, typename PARTITION_SIZE_T>
 struct PartitionDescStl
 {
-    using Utils_t = PartitionUtils<INT_T, SIZE_T, PARTITION_SIZE_T>;
-    using DataSpan_t = typename Utils_t::DataSpan;
-    using Free_t = typename Utils_t::Free;
+    using Utils_t           = PartitionUtils<INT_T, SIZE_T, PARTITION_SIZE_T>;
+    using NewPartition_t    = typename Utils_t::NewPartition;
+    using DataSpan_t        = typename Utils_t::DataSpan;
+    using Free_t            = typename Utils_t::Free;
 
     static constexpr INT_T const smc_null = Utils_t::smc_null;
 
@@ -91,14 +92,21 @@ struct PartitionDescStl
         return m_freeLast;
     }
 
-    void assign_id(
-            INT_T id, INT_T partition, PARTITION_SIZE_T size, SIZE_T offset)
+    constexpr std::size_t count() const noexcept { return m_idCount; }
+    constexpr std::size_t used() const noexcept { return m_dataUsed; }
+
+    NewPartition_t create(INT_T id, PARTITION_SIZE_T size)
     {
-        m_partitionToId[partition] = id;
-        m_idToPartition[id] = partition;
+        NewPartition_t prtn = Utils_t::create_partition(size, m_freeLast);
+        m_partitionToId[prtn.m_partitionNum] = id;
+        m_idToPartition[id] = prtn.m_partitionNum;
         DataSpan_t &rSpan = m_idToData[id];
-        rSpan.m_offset = offset;
+        rSpan.m_offset = prtn.m_offset;
         rSpan.m_size = size;
+
+        m_idCount ++;
+        m_dataUsed += size;
+        return prtn;
     }
 
     Free_t erase(INT_T id)
@@ -126,6 +134,8 @@ struct PartitionDescStl
             m_free.insert(it, std::move(free));
         }
 
+        m_dataUsed -= data.m_size;
+        m_idCount --;
         return free;
     }
 
@@ -205,13 +215,15 @@ struct PartitionDescStl
         return m_idToPartition[id] != smc_null;
     }
 
-    std::vector<INT_T> m_partitionToId;
+    std::vector<INT_T>          m_partitionToId;
 
-    typename Utils_t::Free m_freeLast;
-    std::vector<typename Utils_t::Free> m_free;
+    Free_t                      m_freeLast;
+    std::vector<Free_t>         m_free;
+    std::size_t                 m_dataUsed{0};
+    std::size_t                 m_idCount{0};
 
-    std::vector<INT_T> m_idToPartition;
-    std::vector<DataSpan_t> m_idToData;
+    std::vector<INT_T>          m_idToPartition;
+    std::vector<DataSpan_t>     m_idToData;
 };
 
 template< typename INT_T, typename DATA_T,
@@ -254,8 +266,8 @@ public:
 
     IntArrayMultiMap(INT_T dataCapacity, INT_T idCapacity)
     {
-        resize_data(dataCapacity);
-        resize_ids(idCapacity);
+        data_reserve(dataCapacity);
+        ids_reserve(idCapacity);
     }
 
     IntArrayMultiMap(IntArrayMultiMap const& copy) = delete; // TODO
@@ -295,12 +307,32 @@ public:
         return m_partitions.exists(id);
     }
 
-    void resize_ids(INT_T capacity)
+    std::size_t ids_capacity() const noexcept
+    {
+        return m_partitions.m_idToData.size();
+    }
+
+    std::size_t ids_count() const noexcept
+    {
+        return m_partitions.count();
+    }
+
+    void ids_reserve(INT_T capacity)
     {
         m_partitions.resize(capacity);
     }
 
-    void resize_data(INT_T capacity)
+    constexpr std::size_t data_capacity() const noexcept
+    {
+        return m_dataSize;
+    }
+
+    constexpr std::size_t data_size() const noexcept
+    {
+        return m_partitions.used();
+    }
+
+    void data_reserve(INT_T capacity)
     {
         DATA_T *newData = alloc_traits_t::allocate(m_allocator, capacity);
 
@@ -437,9 +469,7 @@ private:
 
     DATA_T* create_uninitialized(INT_T id, partition_size_t size)
     {
-         NewPartition_t prtn
-                = Utils_t::create_partition(size, m_partitions.last_free());
-         m_partitions.assign_id(id, prtn.m_partitionNum, size, prtn.m_offset);
+         NewPartition_t prtn = m_partitions.create(id, size);
          return &m_data[prtn.m_offset];
     }
 

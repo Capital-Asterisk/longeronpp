@@ -108,7 +108,7 @@ TEST(IntArrayMultiMap, Ownership)
         EXPECT_EQ(dataC[0].use_count(), 3);
         EXPECT_EQ(dataC[4].use_count(), 3);
 
-        multimap.resize_data(48);
+        multimap.data_reserve(48);
 
         // neither should resize
         EXPECT_EQ(dataA.use_count(), 2);
