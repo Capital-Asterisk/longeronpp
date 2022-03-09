@@ -182,6 +182,19 @@ TEST(HierarchicalBitset, Iterators)
     EXPECT_EQ( std::end(bitset), it );
 }
 
+TEST(HierarchicalBitset, EmptyContainer)
+{
+    HierarchicalBitset bitset;
+
+    EXPECT_EQ(bitset.size(), 0);
+    EXPECT_EQ(bitset.data(), nullptr);
+
+    for (std::size_t _ : bitset)
+    {
+        ASSERT_TRUE(false);
+    }
+}
+
 TEST(HierarchicalBitset, RangeLoop)
 {
     constexpr size_t const sc_max = 13370;

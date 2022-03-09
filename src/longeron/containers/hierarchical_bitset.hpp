@@ -175,6 +175,10 @@ public:
 
     std::size_t front() const noexcept
     {
+        if (m_size == 0)
+        {
+            return m_size;
+        }
         return test(0) ? 0 : next(0);
     }
 
