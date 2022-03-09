@@ -47,6 +47,12 @@ TEST(IntArrayMultiMap, Basic)
     // Packing should affect stored values
     EXPECT_EQ(multimap[0][0], 1.0f);
     EXPECT_EQ(multimap[2][1], 6.0f);
+
+    // const access
+    auto const& multimapConst = multimap;
+
+    EXPECT_EQ(multimapConst[0][0], 1.0f);
+    EXPECT_EQ(multimapConst[2][1], 6.0f);
 }
 
 using Shared_t = std::shared_ptr<float>;

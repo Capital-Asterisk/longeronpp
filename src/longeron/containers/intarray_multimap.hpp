@@ -226,6 +226,26 @@ struct PartitionDescStl
     std::vector<DataSpan_t>     m_idToData;
 };
 
+// TODO: use std::span if C++20 is enabled
+template <typename DATA_T>
+class Span
+{
+public:
+    Span(DATA_T* data, std::size_t size)
+     : m_data(data)
+     , m_size(size)
+    { }
+
+    constexpr std::size_t size() const noexcept { return m_size; }
+    constexpr DATA_T& operator[](std::size_t i) const noexcept { return m_data[i]; }
+    constexpr DATA_T* begin() const noexcept { return m_data; }
+    constexpr DATA_T* end() const noexcept { return m_data + m_size; }
+
+private:
+    DATA_T* m_data;
+    std::size_t m_size;
+};
+
 template< typename INT_T, typename DATA_T,
           typename ALLOC_T = std::allocator<DATA_T> >
 class IntArrayMultiMap
@@ -243,24 +263,6 @@ class IntArrayMultiMap
     using DataMoved_t       = typename PartitionDesc_t::DataMoved;
 
 public:
-
-    class Span
-    {
-    public:
-        Span(DATA_T* data, std::size_t size)
-         : m_data(data)
-         , m_size(size)
-        { }
-
-        constexpr std::size_t size() const noexcept { return m_size; }
-        constexpr DATA_T& operator[](partition_size_t i) const noexcept { return m_data[i]; }
-        constexpr DATA_T* begin() const noexcept { return m_data; }
-        constexpr DATA_T* end() const noexcept { return m_data + m_size; }
-
-    private:
-        DATA_T* m_data;
-        std::size_t m_size;
-    };
 
     IntArrayMultiMap() = default;
 
@@ -298,7 +300,7 @@ public:
         }
     }
 
-    bool contains(INT_T id)
+    bool contains(INT_T id) const
     {
         if (! m_partitions.id_in_range(id))
         {
@@ -455,7 +457,17 @@ public:
         std::destroy_n(&m_data[free.m_offset], free.m_size);
     }
 
-    Span operator[] (INT_T id) noexcept
+    Span<DATA_T> operator[] (INT_T id) noexcept
+    {
+        if (!m_partitions.exists(id) || !m_partitions.id_in_range(id))
+        {
+            return {nullptr, 0};
+        }
+        DataSpan_t const &span = m_partitions.m_idToData[id];
+        return {&m_data[span.m_offset], span.m_size};
+    }
+
+    Span<DATA_T const> const operator[] (INT_T id) const noexcept
     {
         if (!m_partitions.exists(id) || !m_partitions.id_in_range(id))
         {
