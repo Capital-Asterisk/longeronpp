@@ -103,7 +103,7 @@ void IdRegistry<ID_T, NO_AUTO_RESIZE>::create(IT_T out, std::size_t count)
     if (m_deleted.count() < count)
     {
         // auto-resize
-        LGRN_ASSERTMV(!NO_AUTO_RESIZE, "Reached max capacity with automatic resizing disabled", count, capacity())
+        LGRN_ASSERTMV(!NO_AUTO_RESIZE, "Reached max capacity with automatic resizing disabled", count, capacity());
         reserve(std::max(capacity() + count, capacity() * 2));
     }
 

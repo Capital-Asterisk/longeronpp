@@ -62,7 +62,8 @@
                   << "* Expr: " << (#expr) << std::endl     \
                   << extra << LGRN_ASSERT_DECORATE();       \
         std::abort();                                       \
-    }
+    }                                                       \
+    ((void)0) // require semicolon
 
     // Usable assert functions
     #define LGRN_ASSERT(expr) _LGRN_ASSERT(expr, "Assertion Failed!", "")
