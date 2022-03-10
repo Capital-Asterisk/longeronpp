@@ -6,7 +6,6 @@
 
 #include "storage.hpp"
 
-#include <stdexcept>
 #include <vector>
 
 namespace lgrn
@@ -31,7 +30,7 @@ public:
     // Allow move assign only if all counts are zero
     RefCount& operator=(RefCount&& move)
     {
-        assert(only_zeros_remaining(0));
+        LGRN_ASSERTM(only_zeros_remaining(0), "Cannot clear non-zero reference counts");
         base_t::operator=(std::move(move));
         return *this;
     }
@@ -59,14 +58,8 @@ public:
 
     void resize(std::size_t newSize)
     {
-        if (newSize < size())
-        {
-            // sizing down, make sure zeros
-            if ( ! only_zeros_remaining(newSize))
-            {
-                throw std::runtime_error("Downsizing non-zero ref counts");
-            }
-        }
+        LGRN_ASSERTMV(!(newSize < size() && !only_zeros_remaining(newSize)),
+                     "Downsizing will clear non-zero reference counts", newSize, size());
         base_t::resize(newSize, 0);
     }
 

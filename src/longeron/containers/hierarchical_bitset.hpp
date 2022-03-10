@@ -5,6 +5,7 @@
 #pragma once
 
 #include "../utility/bitmath.hpp"
+#include "../utility/asserts.hpp"
 
 #include <array>
 #include <bitset>
@@ -195,7 +196,8 @@ public:
      */
     bool test(std::size_t bit) const
     {
-        bounds_check(bit);
+        LGRN_ASSERTMV(bit < m_size, "Bit position out of range", bit, m_size);
+
         RowBit const pos = bit_at(bit);
 
         return bit_test(m_blocks[m_rows[0].m_offset + pos.m_block], pos.m_bit);
@@ -232,7 +234,7 @@ public:
      */
     void set(std::size_t bit)
     {
-        bounds_check(bit);
+        LGRN_ASSERTMV(bit < m_size, "Bit position out of range", bit, m_size);
         block_set_recurse(0, bit_at(bit));
     }
 
@@ -243,7 +245,7 @@ public:
      */
     void reset(std::size_t bit)
     {
-        bounds_check(bit);
+        LGRN_ASSERTMV(bit < m_size, "Bit position out of range", bit, m_size);
         block_reset_recurse(0, bit_at(bit));
     }
 
@@ -336,19 +338,6 @@ private:
         row_index_t const block = rowBit / smc_blockSize;
         int const bit = rowBit % smc_blockSize;
         return { block, bit };
-    }
-
-    /**
-     * @brief Throw an exception if pos is out of this container's range
-     *
-     * @param pos [in] Position to check
-     */
-    constexpr void bounds_check(std::size_t pos) const
-    {
-        if (pos >= m_size)
-        {
-            throw std::out_of_range("Bit position out of range");
-        }
     }
 
     /**

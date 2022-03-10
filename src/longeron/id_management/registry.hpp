@@ -7,6 +7,7 @@
 #include "null.hpp"
 #include "../containers/hierarchical_bitset.hpp"
 #include "../utility/enum_traits.hpp"
+#include "../utility/asserts.hpp"
 
 namespace lgrn
 {
@@ -73,10 +74,7 @@ public:
      */
     void remove(ID_T id)
     {
-        if ( ! exists(id))
-        {
-            throw std::runtime_error("ID does not exist");
-        }
+        LGRN_ASSERTMV(exists(id), "ID does not exist", std::size_t(id));
 
         m_deleted.set(id_int_t(id));
     }
@@ -105,15 +103,8 @@ void IdRegistry<ID_T, NO_AUTO_RESIZE>::create(IT_T out, std::size_t count)
     if (m_deleted.count() < count)
     {
         // auto-resize
-        if constexpr (NO_AUTO_RESIZE)
-        {
-            throw std::runtime_error(
-                    "Reached max capacity with automatic resizing disabled");
-        }
-        else
-        {
-            reserve(std::max(capacity() + count, capacity() * 2));
-        }
+        LGRN_ASSERTMV(!NO_AUTO_RESIZE, "Reached max capacity with automatic resizing disabled", count, capacity())
+        reserve(std::max(capacity() + count, capacity() * 2));
     }
 
     m_deleted.take<IT_T, ID_T>(out, count);

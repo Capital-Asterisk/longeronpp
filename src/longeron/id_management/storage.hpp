@@ -6,14 +6,23 @@
 
 #include "null.hpp"
 
-#include <cassert>
+#include "../utility/asserts.hpp"
+#include "../utility/enum_traits.hpp"
+
 #include <utility>
 
 namespace lgrn
 {
 
 /**
- * @brief Long term storage for IDs
+ * @brief Enforces a ownership for a wrapped int/enum ID by preventing copy and
+ *        improper destruction.
+ *
+ * Intended for unique or reference-counted IDs. Internal state can only be
+ * modified by a friend class specified by template.
+ *
+ * Asserts are used for unintended moves and assignments which are only enforced
+ * in debug. This class should be identical to a raw ID type on release.
  */
 template<typename ID_T, typename REG_T>
 class IdStorage
@@ -23,7 +32,11 @@ class IdStorage
 public:
     IdStorage() : m_id{ id_null<ID_T>() } { }
     IdStorage(IdStorage&& move) = default;
-    ~IdStorage() { assert( ! has_value() ); }
+    ~IdStorage()
+    {
+        LGRN_ASSERTMV( ! has_value(), "IdStorage's value must be cleared by its friend class before destruction",
+                      std::size_t(m_id));
+    }
 
     // Delete copy
     IdStorage(IdStorage const& copy) = delete;
@@ -32,7 +45,8 @@ public:
     // Allow move assignment only if there's no ID stored
     IdStorage& operator=(IdStorage&& move)
     {
-        assert( ! has_value() );
+        LGRN_ASSERTMV( ! has_value(), "IdStorage's value must be cleared by its friend class before replacing stored value",
+                      std::size_t(m_id), std::size_t(move.m_id));
         m_id = std::exchange(move.m_id, id_null<ID_T>());
         return *this;
     }
