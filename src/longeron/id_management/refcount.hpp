@@ -38,7 +38,7 @@ public:
     ~RefCount()
     {
         // Make sure ref counts are all zero on destruction
-        assert(only_zeros_remaining(0));
+        LGRN_ASSERTM(only_zeros_remaining(0), "Cannot destruct with non-zero reference counts");
     }
 
     bool only_zeros_remaining(std::size_t start) const noexcept
