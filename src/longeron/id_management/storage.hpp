@@ -22,7 +22,9 @@ class IdStorage
 
 public:
     IdStorage() : m_id{ id_null<ID_T>() } { }
-    IdStorage(IdStorage&& move) = default;
+    IdStorage(IdStorage&& move)
+     : m_id{std::exchange(move.m_id, id_null<ID_T>())}
+    { }
     ~IdStorage() { assert( ! has_value() ); }
 
     // Delete copy
