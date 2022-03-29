@@ -12,11 +12,7 @@ jobs:
 
     strategy:
       matrix:
-        # ClangCL is known to fail against SDL2-2.0.16 because of the use of -idirafter.
-        # MinGW fails due to incomprehensible linker errors... LTO maybe?
-        # LLVM-Clang fails due to cmake configuration issues in newton-dynamics.
-        # compiler: [msvc, clangcl, mingw, clang]
-        compiler: [msvc]
+        compiler: [msvc, clangcl, mingw, clang]
         config: [Release, Debug]
 
     steps:
@@ -42,7 +38,7 @@ jobs:
     - name: Configure (ClangCL)
       if: ${{ matrix.compiler == 'clangcl' }}
       run: |
-        cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.config }} -TClangCL
+        cmake -B build -DLONGERON_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=${{ matrix.config }} -TClangCL
 
     - name: Configure (MinGW)
       if: ${{ matrix.compiler == 'mingw' }}
@@ -50,7 +46,7 @@ jobs:
         CC:  C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin\cc.exe
         CXX: C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin\c++.exe
       run: |
-        cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.config }} -G"MinGW Makefiles"
+        cmake -B build -DLONGERON_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=${{ matrix.config }} -G"MinGW Makefiles"
 
     - name: Configure (Clang)
       if: ${{ matrix.compiler == 'clang' }}
@@ -58,7 +54,7 @@ jobs:
         CC:  C:\Program Files\LLVM\bin\cc.exe
         CXX: C:\Program Files\LLVM\bin\c++.exe
       run: |
-        cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.config }} -GNinja
+        cmake -B build -DLONGERON_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=${{ matrix.config }} -GNinja
 
     - name: Compile Unit Tests
       run: |
