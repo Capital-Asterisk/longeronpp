@@ -31,7 +31,9 @@ class IdStorage
 
 public:
     IdStorage() : m_id{ id_null<ID_T>() } { }
-    IdStorage(IdStorage&& move) = default;
+    IdStorage(IdStorage&& move)
+     : m_id{std::exchange(move.m_id, id_null<ID_T>())}
+    { }
     ~IdStorage()
     {
         LGRN_ASSERTMV( ! has_value(), "IdStorage's value must be cleared by its friend class before destruction",
