@@ -45,7 +45,8 @@ private:
 /**
  * @brief Iterate one or zero bits, outputting their positions
  */
-template<typename IT_T, typename ITB_T, bool VALUE>
+template<typename IT_T, typename ITB_T, bool ONES,
+         std::size_t(*ADVANCE_SKIP)(IT_T, ITB_T, IT_T&)>
 class BitValueIterator
 {
     using int_t = typename std::iterator_traits<IT_T>::value_type;
@@ -58,13 +59,13 @@ public:
     using pointer           = void;
     using reference         = void;
 
-
     constexpr BitValueIterator() noexcept = default;
-    constexpr BitValueIterator(IT_T it, int_t bit, IT_T begin, ITB_T end) noexcept
-     : m_it(it)
-     , m_begin(begin)
-     , m_end(end)
-     , m_bitLSB(int_t(0x1) << bit)
+    constexpr BitValueIterator(IT_T begin, ITB_T end, IT_T it, int_t bit, std::size_t dist) noexcept
+     : m_it         {it}
+     , m_begin      {begin}
+     , m_end        {end}
+     , m_distance   {dist}
+     , m_bitLSB     {int_t(0x1) << bit}
     { };
     constexpr BitValueIterator(BitValueIterator const& copy) noexcept = default;
     constexpr BitValueIterator(BitValueIterator&& move) noexcept = default;
@@ -82,7 +83,8 @@ public:
         // move to next int if no more bits left
         if (blkMasked == 0)
         {
-            ++m_it; // assume that next block int is always non-zero
+            std::size_t const dist = ADVANCE_SKIP(m_begin, m_end, m_it);
+            m_distance += dist;
             blkMasked = (m_it != m_end) ? value() : 1;
         }
 
@@ -106,14 +108,14 @@ public:
 
     constexpr value_type operator*() const noexcept
     {
-        return std::distance(m_begin, m_it) * sizeof(int_t) * 8 + ctz(m_bitLSB);
+        return m_distance + ctz(m_bitLSB);
     }
 
 private:
 
     constexpr int_t value()
     {
-        if constexpr (VALUE)
+        if constexpr (ONES)
         {
             return *m_it;
         }
@@ -123,9 +125,11 @@ private:
         }
     }
 
-    IT_T m_it;
     IT_T m_begin;
     ITB_T m_end;
+
+    IT_T m_it;
+    std::size_t m_distance;
     int_t m_bitLSB{0}; // single bit denotes position. ie 00000100 for pos 2
 };
 

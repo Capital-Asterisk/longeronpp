@@ -11,29 +11,6 @@
 namespace lgrn
 {
 
-// somewhat of a re-invented std::views::filter
-template <typename IT_T, typename ITB_T, bool(*SKIP_FUNC)(IT_T const&)>
-class SkipValueIterator : public IT_T
-{
-public:
-    SkipValueIterator(IT_T current, IT_T end)
-     : IT_T(current)
-     , m_end(end)
-    { }
-    constexpr SkipValueIterator& operator++() noexcept
-    {
-        do
-        {
-            IT_T::operator++();
-        }
-        while (*this != m_end && SKIP_FUNC(*this));
-
-        return *this;
-    }
-private:
-    ITB_T m_end;
-};
-
 
 /**
  * @brief Adapts a bit interface around an integer span-like type
@@ -45,6 +22,8 @@ class BitView
 {
     using int_t = typename std::iterator_traits<IT_T>::value_type;
 
+    static constexpr int smc_bitSize = sizeof(int_t) * 8;
+
     static_assert(std::is_unsigned_v<int_t>, "Use only unsigned types for bit manipulation");
 
     template<int_t VALUE>
@@ -53,33 +32,43 @@ class BitView
         return (*it == VALUE);
     }
 
+    template<int_t VALUE>
+    static std::size_t advance_skip([[maybe_unused]] IT_T begin, IT_T end, IT_T& it)
+    {
+        std::size_t dist = 0;
+        do
+        {
+            ++it;
+            dist += smc_bitSize;
+        }
+        while (it != end && *it == VALUE);
+        return dist;
+    }
 
-    template <int_t VALUE>
+    template <bool ONES>
     class BitViewValues
     {
-        using SkipIt_t = std::conditional_t<VALUE,
-                SkipValueIterator< IT_T, ITB_T, stupid_test<0x0> >,
-                SkipValueIterator< IT_T, ITB_T, stupid_test<~int_t(0x0)> > >;
-        using ValueIt_t = BitValueIterator< SkipIt_t, ITB_T, VALUE >;
+        using ValueIt_t = std::conditional_t<ONES,
+                BitValueIterator< IT_T, ITB_T, ONES, advance_skip<0x0> >,
+                BitValueIterator< IT_T, ITB_T, ONES, advance_skip<~int_t(0x0)> > >;
+
     public:
 
-        constexpr BitViewValues(BitView const *pContainer)
-         : m_pContainer{pContainer}
+        constexpr BitViewValues(BitView const *pView)
+         : m_pView{pView}
         { }
 
         constexpr ValueIt_t begin() const noexcept
         {
-            auto skipBegin = SkipIt_t(m_pContainer->m_begin, m_pContainer->m_end);
-            return {skipBegin, 0, skipBegin, m_pContainer->m_end};
+            return {m_pView->m_begin, m_pView->m_end, m_pView->m_begin, 0, 0};
         }
         constexpr ValueIt_t end() const noexcept
         {
-            auto skipBegin = SkipIt_t(m_pContainer->m_begin, m_pContainer->m_end);
-            auto skipEnd = SkipIt_t(m_pContainer->m_end, m_pContainer->m_end);
-            return {skipEnd, 0, skipBegin, m_pContainer->m_end};
+            std::size_t const dist = std::distance(m_pView->m_begin, m_pView->m_end) * smc_bitSize;
+            return {m_pView->m_begin, m_pView->m_end, m_pView->m_end, 0, dist};
         }
     private:
-        BitView const *m_pContainer;
+        BitView const *m_pView;
     };
 
 public:
@@ -87,11 +76,6 @@ public:
     constexpr BitView(IT_T first, ITB_T last)
      : m_begin{first}
      , m_end{last}
-    { }
-
-    template <typename RANGE_T>
-    constexpr BitView(RANGE_T& rRange)
-     : BitView(std::begin(rRange), std::end(rRange))
     { }
 
     constexpr void set(std::size_t bit) noexcept;
@@ -108,5 +92,12 @@ private:
     IT_T m_begin;
     ITB_T m_end;
 };
+
+
+template <typename RANGE_T>
+constexpr auto bit_range(RANGE_T& rRange)
+{
+    return BitView(std::begin(rRange), std::end(rRange));
+}
 
 } // namespace lgrn
