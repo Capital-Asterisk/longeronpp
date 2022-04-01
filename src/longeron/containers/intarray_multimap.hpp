@@ -4,13 +4,12 @@
  */
 #pragma once
 
+#include "../utility/asserts.hpp"
 
 #include <algorithm>
 #include <memory>
 #include <utility>
 #include <vector>
-
-#include <cassert>
 
 namespace lgrn
 {
@@ -111,7 +110,7 @@ struct PartitionDescStl
 
     Free_t erase(INT_T id)
     {
-        assert(exists(id));
+        LGRN_ASSERTM(exists(id), "");
 
         // get partition number
         INT_T const partition = std::exchange(m_idToPartition[id], smc_null);
@@ -191,7 +190,7 @@ struct PartitionDescStl
             else
             {
                 // hit next free partition, merge rFirst into rNext
-                assert(nextPrtn == rNext.m_partitionNum);
+                LGRN_ASSERT(nextPrtn == rNext.m_partitionNum);
                 rNext.m_offset          -= rFirst.m_size;
                 rNext.m_partitionNum    -= rFirst.m_partitionCount;
                 rNext.m_partitionCount  += rFirst.m_partitionCount;
@@ -360,7 +359,7 @@ public:
                     partition_size_t const size = rSpan.m_size;
 
                     // Make sure partitions fit in new space
-                    assert(writeOffset <= capacity);
+                    LGRN_ASSERT(writeOffset <= capacity);
 
                     std::uninitialized_move_n(
                             &m_data[offset], size, &newData[writeOffset]);
@@ -399,8 +398,8 @@ public:
     template<typename IT_T>
     DATA_T* emplace(INT_T id, IT_T first, IT_T last)
     {
-        assert(m_partitions.id_in_range(id));
-        assert(!m_partitions.exists(id));
+        LGRN_ASSERTMV(m_partitions.id_in_range(id), "ID out of range", id, ids_capacity());
+        LGRN_ASSERTMV(!m_partitions.exists(id), "ID does not exist", id);
         partition_size_t size = std::distance(first, last);
         DATA_T* data = create_uninitialized(id, size);
         std::uninitialized_move(first, last, data);
@@ -409,8 +408,8 @@ public:
 
     DATA_T* emplace(INT_T id, partition_size_t size)
     {
-        assert(m_partitions.id_in_range(id));
-        assert(!m_partitions.exists(id));
+        LGRN_ASSERTMV(m_partitions.id_in_range(id), "ID out of range", id, ids_capacity());
+        LGRN_ASSERTMV(!m_partitions.exists(id), "ID does not exist", id);
         DATA_T* data = create_uninitialized(id, size);
         std::uninitialized_default_construct_n(data, size);
         return data;
