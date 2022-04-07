@@ -617,7 +617,8 @@ void HierarchicalBitset<BLOCK_INT_T>::recalc_blocks()
             // Evaluate a block for each bit
             for (int k = 0; k < belowBlocks; k ++)
             {
-                blockNew |= currentBit * (m_blocks[below.m_offset + k]);
+                // Set bit if block below is non-zero
+                blockNew |= currentBit * (m_blocks[below.m_offset + k] != 0);
                 currentBit <<= 1;
             }
 
