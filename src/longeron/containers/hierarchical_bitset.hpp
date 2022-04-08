@@ -618,7 +618,7 @@ void HierarchicalBitset<BLOCK_INT_T>::recalc_blocks()
             for (int k = 0; k < belowBlocks; k ++)
             {
                 // Set bit if block below is non-zero
-                blockNew |= currentBit * (m_blocks[below.m_offset + k] != 0);
+                blockNew |= currentBit * (m_blocks[below.m_offset + j * smc_blockSize + k] != 0);
                 currentBit <<= 1;
             }
 
