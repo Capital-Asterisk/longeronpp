@@ -6,15 +6,7 @@ on:
   release:
     types: published
 
-env:
-  matrix-jobs: >
-    [
-    CodeQL --cfg --build
-    ${{ !github.event.pull_request && ', clang-tidy --cfg' }}
-    ]
-
 jobs:
-
   analyse:
     runs-on: ubuntu-latest
     permissions:
@@ -26,8 +18,12 @@ jobs:
       fail-fast: false
       matrix:
         # Janky tag-based steps. TODO: figure out iwyu
-        tool: ${{ fromJSON(env.matrix-jobs) }}
+        tool:
+          - 'CodeQL --cfg --build'
+          - 'clang-tidy --cfg'
         buildconfig: [Debug]
+        exclude:
+         - tool: ${{ !github.event.pull_request && 'clang-tidy --cfg' }}
 
     steps:
     - uses: actions/checkout@v2
