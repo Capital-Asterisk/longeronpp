@@ -23,8 +23,8 @@ jobs:
           - 'CodeQL --cfg --build'
           - 'clang-tidy --cfg'
         buildconfig: [Debug]
-        
-    if: ${{ startsWith(matrix.tool, 'CodeQL') && github.event.pull_request }} 
+        exclude:
+          - tool: ${{ github.event.pull_request && 'clang-tidy --cfg' }}
 
     steps:
     - uses: actions/checkout@v2
