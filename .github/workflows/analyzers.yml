@@ -7,43 +7,50 @@ on:
     types: published
 
 jobs:
-  build:
+  analyse:
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
 
     strategy:
+      fail-fast: false
       matrix:
-        tool: [clang-analyzer, iwyu]
-        config: [Release, Debug]
+        # Janky tag-based steps. TODO: figure out iwyu
+        tool:
+          - 'clang-tidy --cfg'
+          - 'CodeQL --cfg --build'
+        buildconfig: [Debug]
 
     steps:
     - uses: actions/checkout@v2
       with:
         fetch-depth: 1
         submodules: recursive
-
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt install -y iwyu clang clang-tidy clang-tools
+        
+    - name: Initialize CodeQL
+      if: ${{ startsWith(matrix.tool, 'CodeQL') }}
+      uses: github/codeql-action/init@v2
+      with:
+        languages: cpp
 
     - name: Configure
+      if: ${{ contains(matrix.tool, '--cfg') }}
       run: |
-        cmake -B build -DLONGERON_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=R${{ matrix.config }}
+        cmake -B build -DLONGERON_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=R${{ matrix.buildconfig }}
+        
+    - name: Compile Unit Tests
+      if: ${{ contains(matrix.tool, '--build') }}
+      run: |
+        cmake --build build --parallel --config ${{ matrix.config }}
+        
+    - name: Perform CodeQL Analysis
+      if: ${{ startsWith(matrix.tool, 'CodeQL') }}
+      uses: github/codeql-action/analyze@v2
 
-    - name: Download Clang Analysis Driver Scripts
-      run: |
-        wget https://raw.githubusercontent.com/llvm/llvm-project/llvmorg-11.0.1/clang-tools-extra/clang-tidy/tool/run-clang-tidy.py
-        wget https://raw.githubusercontent.com/include-what-you-use/include-what-you-use/clang_11/iwyu_tool.py
-        chmod +x run-clang-tidy.py iwyu_tool.py 
-
-    # Implicitly requires build/compile_commands.json to exist
-    - name: Run Clang Analyzer
-      if: ${{ matrix.tool == 'clang-analyzer' }}
-      run: |
-        ./run-clang-tidy.py -j $(nproc) -p build
-
-    # Implicitly requires build/compile_commands.json to exist
-    - name: Run IWYU
-      if: ${{ matrix.tool == 'iwyu' }}
-      run: |
-        ./iwyu_tool.py -j $(nproc) -p build -- -Xiwyu --mapping_file=${GITHUB_WORKSPACE}/iwyu-ubuntu.imp
+    - name: Clang Tidy Review
+      if: ${{ startsWith(matrix.tool, 'clang-tidy') }}
+      uses: ZedThree/clang-tidy-review@v0.8.2
+      with:
+        build_dir: build
