@@ -7,6 +7,8 @@ on:
     types: published
 
 jobs:
+  
+
   analyse:
     runs-on: ubuntu-latest
     permissions:
@@ -19,8 +21,8 @@ jobs:
       matrix:
         # Janky tag-based steps. TODO: figure out iwyu
         tool:
-          - 'clang-tidy --cfg'
           - 'CodeQL --cfg --build'
+          - ${{ github.event.pull_request && 'clang-tidy --cfg'}} 
         buildconfig: [Debug]
 
     steps:
@@ -43,7 +45,7 @@ jobs:
     - name: Compile Unit Tests
       if: ${{ contains(matrix.tool, '--build') }}
       run: |
-        cmake --build build --parallel --config ${{ matrix.config }}
+        cmake --build build --parallel --config ${{ matrix.buildconfig }}
         
     - name: Perform CodeQL Analysis
       if: ${{ startsWith(matrix.tool, 'CodeQL') }}
