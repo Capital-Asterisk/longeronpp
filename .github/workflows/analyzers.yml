@@ -7,7 +7,6 @@ on:
     types: published
 
 jobs:
-  
 
   analyse:
     runs-on: ubuntu-latest
@@ -22,8 +21,10 @@ jobs:
         # Janky tag-based steps. TODO: figure out iwyu
         tool:
           - 'CodeQL --cfg --build'
-          - ${{ github.event.pull_request && 'clang-tidy --cfg'}} 
+          - 'clang-tidy --cfg'
         buildconfig: [Debug]
+        
+    if: ${{ startsWith(matrix.tool, 'CodeQL') && github.event.pull_request }} 
 
     steps:
     - uses: actions/checkout@v2
