@@ -15,7 +15,7 @@ using lgrn::HierarchicalBitset;
 /**
  * @brief Generate random integers in ascending order up to a certain maximum
  */
-std::vector<int> random_ascending(int seed, size_t maximum)
+static std::vector<int> random_ascending(int seed, size_t maximum)
 {
     std::mt19937 gen(seed);
     std::uniform_int_distribution<int> dist(0, 1);
