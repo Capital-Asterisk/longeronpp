@@ -11,6 +11,8 @@
 namespace lgrn
 {
 
+#if 0
+
 /**
  * @brief TODO
  */
@@ -41,6 +43,8 @@ private:
     IT_T m_it;
     int_t m_posMask; // single bit denotes position. ie 00000100 for pos 2
 };
+
+#endif
 
 /**
  * @brief Iterate ones bits or zeros bits as a set of integer position
@@ -78,6 +82,7 @@ public:
     constexpr BitPosIterator(BitPosIterator const& copy) noexcept = default;
     constexpr BitPosIterator(BitPosIterator&& move) noexcept = default;
 
+    constexpr BitPosIterator& operator=(BitPosIterator const& copy) noexcept = default;
     constexpr BitPosIterator& operator=(BitPosIterator&& move) noexcept = default;
 
     constexpr BitPosIterator& operator++() noexcept
@@ -139,7 +144,7 @@ private:
     ITB_T m_end;
 
     IT_T m_it;
-    std::size_t m_distance;
+    std::size_t m_distance{};
     int_t m_bitLSB{0}; // single bit denotes position. ie 00000100 for pos 2
 };
 

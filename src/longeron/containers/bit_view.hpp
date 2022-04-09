@@ -7,6 +7,7 @@
 #include "bit_iterator.hpp"
 #include "../utility/bitmath.hpp"
 
+#include <algorithm>
 #include <type_traits>
 
 namespace lgrn
@@ -83,8 +84,8 @@ public:
     constexpr void reset() noexcept;
 
     constexpr std::size_t size() const noexcept;
-    constexpr BitViewValues<true> const ones() const noexcept { return this; }
-    constexpr BitViewValues<false> const zeros() const noexcept { return this; }
+    constexpr BitViewValues<true> ones() const noexcept { return this; }
+    constexpr BitViewValues<false> zeros() const noexcept { return this; }
 
 private:
     IT_T m_begin;
@@ -97,7 +98,7 @@ constexpr bool BitView<IT_T, ITB_T>::test(std::size_t bit) const noexcept
     std::size_t const block = bit / smc_bitSize;
     std::size_t const blockBit = bit % smc_bitSize;
 
-    return bit_test(std::next(m_begin, block), blockBit);
+    return bit_test(*std::next(m_begin, block), blockBit);
 }
 
 template <typename IT_T, typename ITB_T>

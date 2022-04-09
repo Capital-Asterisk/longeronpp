@@ -10,4 +10,5 @@ endfunction()
 
 lgrn_add_test(hierarchical_bitset hierarchical_bitset.cpp longeron)
 lgrn_add_test(intarray_multimap intarray_multimap.cpp longeron)
+lgrn_add_test(bit_view bit_view.cpp longeron)
 lgrn_add_test(id_registry id_management/registry.cpp longeron)
