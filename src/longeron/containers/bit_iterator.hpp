@@ -71,12 +71,16 @@ public:
      , m_begin          {begin}
      , m_end            {end}
      , m_distance       {dist}
-     , m_bitLSB         {int_t(int_t(0x1) << bit)}
     {
-        // increment to first valid bit
-        if ((it != end) && (read() & m_bitLSB) == 0)
+        if ( (it != end) )
         {
-            ++(*this);
+            m_block = (int_t(int_t(int_t(~int_t(0x0)) << bit) & read()));
+
+            // increment to first valid bit
+            if (m_block == 0)
+            {
+                ++(*this);
+            }
         }
     };
     constexpr BitPosIterator(BitPosIterator const& copy) noexcept = default;
@@ -87,23 +91,16 @@ public:
 
     constexpr BitPosIterator& operator++() noexcept
     {
-        // this fills all upper bits, current LSB bit will be zero
-        // ie: 00010000 -> 11100000
-        int_t const mask = -(m_bitLSB + m_bitLSB);
-
-        int_t const blk = read();
-        int_t blkMasked = blk & mask;
+        // Remove LSB
+        m_block = m_block & (m_block - 1);
 
         // move to next int if no more bits left
-        if (blkMasked == 0)
+        if (m_block == 0)
         {
             std::size_t const dist = ADVANCE_SKIP_T::operator()(m_begin, m_end, m_it);
             m_distance += dist;
-            blkMasked = (m_it != m_end) ? read() : 1;
+            m_block = (m_it != m_end) ? read() : 0;
         }
-
-        // get LSB only
-        m_bitLSB = blkMasked & (-blkMasked);
 
         return *this;
     }
@@ -111,7 +108,7 @@ public:
     constexpr friend bool operator==(BitPosIterator const& lhs,
                                      BitPosIterator const& rhs) noexcept
     {
-        return (lhs.m_it == rhs.m_it) && (lhs.m_bitLSB == rhs.m_bitLSB);
+        return (lhs.m_it == rhs.m_it) && (lhs.m_block == rhs.m_block);
     };
 
     constexpr friend bool operator!=(BitPosIterator const& lhs,
@@ -122,7 +119,7 @@ public:
 
     constexpr value_type operator*() const noexcept
     {
-        return m_distance + ctz(m_bitLSB);
+        return m_distance + ctz(m_block);
     }
 
 private:
@@ -144,8 +141,8 @@ private:
     ITB_T m_end;
 
     IT_T m_it;
-    std::size_t m_distance{};
-    int_t m_bitLSB{0}; // single bit denotes position. ie 00000100 for pos 2
+    std::size_t m_distance{0};
+    int_t m_block{0};
 };
 
 
