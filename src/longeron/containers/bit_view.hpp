@@ -15,14 +15,15 @@ namespace lgrn
 {
 
 /**
- * @brief Adapts a bit interface around an integer range
- *
- * Not intended for storage purposes.
+ * @brief Mixin that adapts a bit interface around an integer range
  */
-template <typename RANGE_T, typename IT_T, typename ITB_T>
+template <typename RANGE_T>
 class BitView : private RANGE_T
 {
-    using int_t = typename std::iterator_traits<IT_T>::value_type;
+    using it_t = decltype(std::cbegin(std::declval<RANGE_T&>()));
+    using itb_t = decltype(std::cend(std::declval<RANGE_T&>()));
+
+    using int_t = std::remove_cv_t<typename std::iterator_traits<it_t>::value_type>;
 
     static constexpr int smc_bitSize = sizeof(int_t) * 8;
 
@@ -31,7 +32,7 @@ class BitView : private RANGE_T
     template<int_t VALUE>
     struct advance_skip
     {
-        std::size_t operator()([[maybe_unused]] IT_T begin, ITB_T end, IT_T& it) const noexcept
+        std::size_t operator()([[maybe_unused]] it_t begin, itb_t end, it_t& it) const noexcept
         {
             std::size_t dist = 0;
             do
@@ -48,8 +49,8 @@ class BitView : private RANGE_T
     class BitViewValues
     {
         using ValueIt_t = std::conditional_t<ONES,
-                BitPosIterator< IT_T, ITB_T, ONES, advance_skip<int_t(0)> >,
-                BitPosIterator< IT_T, ITB_T, ONES, advance_skip<int_t(~int_t(0))> > >;
+                BitPosIterator< it_t, itb_t, ONES, advance_skip<int_t(0)> >,
+                BitPosIterator< it_t, itb_t, ONES, advance_skip<int_t(~int_t(0))> > >;
 
     public:
 
@@ -59,12 +60,16 @@ class BitView : private RANGE_T
 
         constexpr ValueIt_t begin() const noexcept
         {
-            return {{}, m_pView->m_begin, m_pView->m_end, m_pView->m_begin, 0, 0};
+            auto first = std::begin(m_pView->ints());
+            auto last = std::end(m_pView->ints());
+            return ValueIt_t({}, first, last, first, 0, 0);
         }
         constexpr ValueIt_t end() const noexcept
         {
-            std::size_t const dist = std::distance(m_pView->m_begin, m_pView->m_end) * smc_bitSize;
-            return {{}, m_pView->m_begin, m_pView->m_end, m_pView->m_end, 0, dist};
+            auto first = std::begin(m_pView->ints());
+            auto last = std::end(m_pView->ints());
+            std::size_t const dist = std::distance(first, last) * smc_bitSize;
+            return ValueIt_t({}, first, last, last, 0, dist);
         }
     private:
         BitView const *m_pView;
@@ -72,6 +77,9 @@ class BitView : private RANGE_T
 
 public:
 
+    static constexpr std::size_t int_bitsize() noexcept { return smc_bitSize; }
+
+    constexpr BitView() = default;
     constexpr BitView(RANGE_T range) : RANGE_T(range) { }
 
     constexpr bool test(std::size_t bit) const noexcept;
@@ -91,8 +99,8 @@ public:
     constexpr RANGE_T const& ints() const noexcept { return static_cast<RANGE_T const&>(*this); }
 };
 
-template <typename RANGE_T, typename IT_T, typename ITB_T>
-constexpr bool BitView<RANGE_T, IT_T, ITB_T>::test(std::size_t bit) const noexcept
+template <typename RANGE_T>
+constexpr bool BitView<RANGE_T>::test(std::size_t bit) const noexcept
 {
     std::size_t const block = bit / smc_bitSize;
     std::size_t const blockBit = bit % smc_bitSize;
@@ -100,8 +108,8 @@ constexpr bool BitView<RANGE_T, IT_T, ITB_T>::test(std::size_t bit) const noexce
     return bit_test(*std::next(std::begin(ints()), block), blockBit);
 }
 
-template <typename RANGE_T, typename IT_T, typename ITB_T>
-constexpr void BitView<RANGE_T, IT_T, ITB_T>::set(std::size_t bit) noexcept
+template <typename RANGE_T>
+constexpr void BitView<RANGE_T>::set(std::size_t bit) noexcept
 {
     std::size_t const block = bit / smc_bitSize;
     std::size_t const blockBit = bit % smc_bitSize;
@@ -109,14 +117,14 @@ constexpr void BitView<RANGE_T, IT_T, ITB_T>::set(std::size_t bit) noexcept
     *std::next(std::begin(ints()), block) |= int_t(0x1) << blockBit;
 }
 
-template <typename RANGE_T, typename IT_T, typename ITB_T>
-constexpr void BitView<RANGE_T, IT_T, ITB_T>::set() noexcept
+template <typename RANGE_T>
+constexpr void BitView<RANGE_T>::set() noexcept
 {
     std::fill(std::begin(ints()), std::end(ints()), ~int_t(0x0));
 }
 
-template <typename RANGE_T, typename IT_T, typename ITB_T>
-constexpr void BitView<RANGE_T, IT_T, ITB_T>::reset(std::size_t bit) noexcept
+template <typename RANGE_T>
+constexpr void BitView<RANGE_T>::reset(std::size_t bit) noexcept
 {
     std::size_t const block = bit / smc_bitSize;
     std::size_t const blockBit = bit % smc_bitSize;
@@ -124,26 +132,26 @@ constexpr void BitView<RANGE_T, IT_T, ITB_T>::reset(std::size_t bit) noexcept
     *std::next(std::begin(ints()), block) &= ~(int_t(0x1) << blockBit);
 }
 
-template <typename RANGE_T, typename IT_T, typename ITB_T>
-constexpr void BitView<RANGE_T, IT_T, ITB_T>::reset() noexcept
+template <typename RANGE_T>
+constexpr void BitView<RANGE_T>::reset() noexcept
 {
     std::fill(std::begin(ints()), std::end(ints()), int_t(0x0));
 }
 
-template <typename RANGE_T, typename IT_T, typename ITB_T>
-constexpr std::size_t BitView<RANGE_T, IT_T, ITB_T>::size() const noexcept
+template <typename RANGE_T>
+constexpr std::size_t BitView<RANGE_T>::size() const noexcept
 {
     return std::distance(std::begin(ints()), std::end(ints())) * smc_bitSize;
 }
 
-template <typename RANGE_T, typename IT_T, typename ITB_T>
-constexpr std::size_t BitView<RANGE_T, IT_T, ITB_T>::count() const noexcept
+template <typename RANGE_T>
+constexpr std::size_t BitView<RANGE_T>::count() const noexcept
 {
     std::size_t total = 0;
-    IT_T it = std::begin(ints());
+    it_t it = std::begin(ints());
     while (it != std::end(ints()))
     {
-        total += std::bitset<smc_bitSize>(*it);
+        total += std::bitset<smc_bitSize>(*it).count();
         std::advance(it, 1);
     }
     return total;
@@ -168,11 +176,7 @@ struct IteratorPair
 template <typename IT_T, typename ITB_T>
 constexpr auto bit_view(IT_T first, ITB_T last)
 {
-    using it_t = decltype (first);
-    using itb_t = decltype (first);
-    using it_pair_t = IteratorPair<it_t, itb_t>;
-
-    return BitView<it_pair_t, it_t, itb_t>(it_pair_t(first, last));
+    return BitView(IteratorPair(first, last));
 }
 
 template <typename RANGE_T>
