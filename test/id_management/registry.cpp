@@ -2,10 +2,11 @@
  * SPDX-License-Identifier: MIT
  * SPDX-FileCopyrightText: 2021 Neal Nicdao <chrisnicdao0@gmail.com>
  */
-#include <longeron/id_management/registry.hpp>
+#include <longeron/id_management/registry_stl.hpp>
 
 #include <gtest/gtest.h>
 
+#include <array>
 #include <random>
 
 enum class Id : uint64_t { };
@@ -17,7 +18,7 @@ static_assert(std::is_same_v<lgrn::underlying_int_type_t<Id>, uint64_t>);
 // Basic intended use test of managing IDs
 TEST(IdRegistry, ManageIds)
 {
-    lgrn::IdRegistry<Id> registry;
+    lgrn::IdRegistryStl<Id> registry;
 
     Id idA = registry.create();
     Id idB = registry.create();
@@ -42,7 +43,7 @@ TEST(IdRegistry, ManageIds)
     EXPECT_EQ( registry.size(), 2 );
 
     std::array<Id, 32> ids;
-    registry.create(std::begin(ids), ids.size());
+    registry.create(std::begin(ids), std::end(ids));
 
     for (Id id : ids)
     {
@@ -61,7 +62,7 @@ TEST(IdRegistry, RandomCreationAndDeletion)
     constexpr size_t const sc_createMin = 60;
     constexpr size_t const sc_repetitions = 32;
 
-    lgrn::IdRegistry<Id> registry;
+    lgrn::IdRegistryStl<Id> registry;
 
     std::set<Id> idSet;
 
@@ -70,14 +71,14 @@ TEST(IdRegistry, RandomCreationAndDeletion)
     std::uniform_int_distribution<int> distFlip(0, 1);
 
 
-    for (int i = 0; i < sc_repetitions; i ++)
+    for (unsigned int i = 0; i < sc_repetitions; i ++)
     {
         // Create a bunch of new IDs
 
         size_t const toCreate = distCreate(gen);
         std::array<Id, sc_createMax> newIds;
 
-        registry.create(std::begin(newIds), toCreate);
+        registry.create(std::begin(newIds), std::begin(newIds) + toCreate);
         idSet.insert(std::begin(newIds), std::begin(newIds) + toCreate);
 
         // Remove about half of the IDs

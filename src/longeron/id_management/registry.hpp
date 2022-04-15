@@ -14,6 +14,8 @@ namespace lgrn
 
 /**
  * @brief Generates reusable sequential IDs
+ *
+ * @deprecated use IdRegistryStl
  */
 template<typename ID_T, bool NO_AUTO_RESIZE = false>
 class IdRegistry
