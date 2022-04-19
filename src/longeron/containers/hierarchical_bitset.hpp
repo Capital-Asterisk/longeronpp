@@ -16,19 +16,6 @@
 namespace lgrn
 {
 
-/**
- * @brief Divide two integers and round up
- */
-template<typename NUM_T, typename DENOM_T>
-constexpr decltype(auto) div_ceil(NUM_T num, DENOM_T denom) noexcept
-{
-    static_assert(std::is_integral_v<NUM_T>);
-    static_assert(std::is_integral_v<DENOM_T>);
-
-    return (num / denom) + (num % denom != 0);
-}
-
-//-----------------------------------------------------------------------------
 
 /**
  * @brief A bitset featuring hierarchical rows for fast iteration over set bits
