@@ -32,6 +32,23 @@ Here are some examples of some logic circuits I'd like to deal with:
 
 Longeron Circuit Simulator is designed to flawlessly support all three of these circuits without the possibility of order-dependent issues, while being surprisingly simple and optimized for a large number of circuit elements.
 
+Sample output
+```
+XOR made from NAND gates:
+* 0 XOR 0 = 0
+* 0 XOR 1 = 1
+* 1 XOR 0 = 1
+* 1 XOR 1 = 0
+NAND SR latch:
+* set...    Q = 1
+* retain... Q = 1
+* reset...  Q = 0
+* retain... Q = 0
+Edge Detector:
+ In[A]: __##____#___######____#######___
+Out[A]: __#_____#___#_________#_________
+```
+
 ## Previous (flawed) approaches
 
 My need for a circuit simulator first arose as a solution to wiring together parts in a simulated spacecraft for a game. Instead of hard-coding controls into each individual part, I though about using a wiring system to control thruster levels with user inputs, autopilots, sensors, and control systems. I was inspired by an electronics background and a GMod addon known as Wiremod.

@@ -91,9 +91,13 @@ struct CombinationalGates
 
 // Updating
 
+using BitVector_t = lgrn::BitView< std::vector<uint64_t> >;
+
+constexpr std::size_t const gc_bitVecIntSize = 64;
+
 struct UpdateElem
 {
-    lgrn::BitView< std::vector<uint64_t> >  m_denseDirty;
+    BitVector_t m_denseDirty;
 };
 
 using UpdateElemTypes_t = std::vector<UpdateElem>;
@@ -101,7 +105,7 @@ using UpdateElemTypes_t = std::vector<UpdateElem>;
 template <typename VALUE_T>
 struct UpdateNodes
 {
-    lgrn::BitView< std::vector<uint64_t> >  m_nodeDirty;
+    BitVector_t                             m_nodeDirty;
     std::vector<VALUE_T>                    m_nodeNewValues;
 
     void assign(NodeId node, VALUE_T&& value)
@@ -111,10 +115,8 @@ struct UpdateNodes
     }
 };
 
-//-----------------------------------------------------------------------------
-
 /**
- * @brief
+ * @brief Update Combinational Logic Gates and request node changes
  *
  * @param[in] toUpdate      Iterable range of element dence indices to update
  * @param[in] pDenseElem    ElementIDs from dence indices, indexed by toUpdate
@@ -122,6 +124,8 @@ struct UpdateNodes
  * @param[in] pNodeValues   Values of logic nodes, used to detect changes
  * @param[in] gates         Data for combinational logic gates
  * @param[out] rUpdNodes    Node changes out
+ *
+ * @return true if any node changes are written
  */
 template <typename RANGE_T>
 bool update_combinational(
@@ -187,15 +191,16 @@ bool update_combinational(
 }
 
 /**
- * @brief update_nodes
+ * @brief Update node values and notify subscribed Elements
  *
- * @param toUpdate
- * @param nodeSubs
- * @param elements
- * @param pNewValues
- * @param pValues
- * @param rUpdElem
- * @return
+ * @param[in] toUpdate   Range of nodes to update
+ * @param[in] nodeSubs   Subscribers of each node
+ * @param[in] elements   Element data
+ * @param[in] pNewValues New node values
+ * @param[out] pValues   Node values to write to
+ * @param[out] rUpdElem  Element notifications output
+ *
+ * @return true if any nodes were notified
  */
 template <typename VALUE_T, typename RANGE_T>
 bool update_nodes(
