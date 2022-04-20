@@ -33,12 +33,12 @@ jobs:
     - name: Configure (MSVC)
       if: ${{ matrix.compiler == 'msvc' }}
       run: |
-        cmake -B build -DLONGERON_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=${{ matrix.config }} -DCMAKE_SYSTEM_VERSION="10.0.19041.0"
+        cmake -B build -DLONGERON_BUILD_TESTS=ON -DLONGERON_BUILD_EXAMPLES=ON -DCMAKE_BUILD_TYPE=${{ matrix.config }} -DCMAKE_SYSTEM_VERSION="10.0.19041.0"
 
     - name: Configure (ClangCL)
       if: ${{ matrix.compiler == 'clangcl' }}
       run: |
-        cmake -B build -DLONGERON_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=${{ matrix.config }} -TClangCL
+        cmake -B build -DLONGERON_BUILD_TESTS=ON -DLONGERON_BUILD_EXAMPLES=ON -DCMAKE_BUILD_TYPE=${{ matrix.config }} -TClangCL
 
     - name: Configure (MinGW)
       if: ${{ matrix.compiler == 'mingw' }}
@@ -46,7 +46,7 @@ jobs:
         CC:  C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin\cc.exe
         CXX: C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin\c++.exe
       run: |
-        cmake -B build -DLONGERON_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=${{ matrix.config }} -G"MinGW Makefiles"
+        cmake -B build -DLONGERON_BUILD_TESTS=ON -DLONGERON_BUILD_EXAMPLES=ON -DCMAKE_BUILD_TYPE=${{ matrix.config }} -G"MinGW Makefiles"
 
     - name: Configure (Clang)
       if: ${{ matrix.compiler == 'clang' }}
@@ -54,7 +54,7 @@ jobs:
         CC:  C:\Program Files\LLVM\bin\cc.exe
         CXX: C:\Program Files\LLVM\bin\c++.exe
       run: |
-        cmake -B build -DLONGERON_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=${{ matrix.config }} -GNinja
+        cmake -B build -DLONGERON_BUILD_TESTS=ON -DLONGERON_BUILD_EXAMPLES=ON -DCMAKE_BUILD_TYPE=${{ matrix.config }} -GNinja
 
     - name: Compile Unit Tests
       run: |

@@ -23,7 +23,7 @@
     #include <iostream>
 
     #ifdef __GNUC__
-        #define _LGRN_FUNC() __PRETTY_FUNCTION__
+        #define _LGRN_FUNC() static_cast<char const*>(__PRETTY_FUNCTION__)
     #elif defined(_MSC_VER)
         #define _LGRN_FUNC() __FUNCSIG__
     #endif

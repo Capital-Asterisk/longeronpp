@@ -34,6 +34,19 @@ namespace lgrn
 
 #endif
 
+/**
+ * @brief Divide two integers and round up
+ */
+template<typename NUM_T, typename DENOM_T>
+constexpr decltype(auto) div_ceil(NUM_T num, DENOM_T denom) noexcept
+{
+    // ik, not 'bit math' but this is probably the best place to put this so far
+    static_assert(std::is_integral_v<NUM_T>);
+    static_assert(std::is_integral_v<DENOM_T>);
+
+    return (num / denom) + (num % denom != 0);
+}
+
 template<typename INT_T>
 constexpr bool bit_test(INT_T block, int bit) noexcept
 {

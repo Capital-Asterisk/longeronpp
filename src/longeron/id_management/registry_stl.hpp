@@ -7,6 +7,8 @@
 
 #include "bitview_registry.hpp"
 #include "../containers/bit_view.hpp"
+#include "../utility/bitmath.hpp"
+
 
 
 #include <vector>
@@ -31,6 +33,8 @@ public:
     IdRegistryStl() = default;
     IdRegistryStl(underlying_t reg) : underlying_t(reg) { }
 
+    using underlying_t::bitview;
+    using underlying_t::capacity;
     using underlying_t::size;
     using underlying_t::remove;
     using underlying_t::exists;
@@ -59,7 +63,10 @@ public:
     void reserve(std::size_t n)
     {
         // may need some considerations when hierarchical bitsets are re-added
-        vec().resize(n / underlying_t::bitview().int_bitsize() + 1, uint64_t());
+
+        // Resize with all new bits set, as 1 is for free Id
+        vec().resize(lgrn::div_ceil(n, underlying_t::bitview().int_bitsize()),
+                     ~uint64_t(0));
     }
 
     auto& vec() noexcept { return underlying_t::bitview().ints(); }
