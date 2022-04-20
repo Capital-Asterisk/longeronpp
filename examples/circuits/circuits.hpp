@@ -75,8 +75,8 @@ struct CombinationalGates
 {
     // Behaviour of a 'multi-input XOR gate' is disputed, either:
     // * XOR - High when only a single input is High, correct to 'exclusive' OR
-    // * PAIRITY - High when odd number of inputs High, chained XOR operations
-    enum class Op : uint8_t { AND, OR, XOR, PAIRITY };
+    // * XOR2 - High when odd number of inputs High, chained XORs / Parity
+    enum class Op : uint8_t { AND, OR, XOR, XOR2 };
 
     struct GateDesc
     {
@@ -103,6 +103,12 @@ struct UpdateNodes
 {
     lgrn::BitView< std::vector<uint64_t> >  m_nodeDirty;
     std::vector<VALUE_T>                    m_nodeNewValues;
+
+    void assign(NodeId node, VALUE_T&& value)
+    {
+        m_nodeDirty.set(node);
+        m_nodeNewValues[node] = std::forward<VALUE_T>(value);
+    }
 };
 
 //-----------------------------------------------------------------------------
@@ -140,8 +146,6 @@ bool update_combinational(
         ElementId const elem = pDenseElem[dense];
         CombinationalGates::GateDesc const& desc = gates.m_elemGates[dense];
 
-        std::cout << "Updating Element: " << elem << "\n";
-
         auto connectedNodes = elemConnect[elem];
         auto inFirst = connectedNodes.begin() + 1;
         auto inLast  = connectedNodes.end();
@@ -159,15 +163,10 @@ bool update_combinational(
         case Op::XOR:
             value = std::count_if(inFirst, inLast, is_logic_high) == 1;
             break;
-        case Op::PAIRITY:
+        case Op::XOR2:
             value = (std::count_if(inFirst, inLast, is_logic_high) & 1) == 1;
             break;
         }
-
-        std::for_each(inFirst, inLast, [pNodeValues] (NodeId in)
-        {
-            std::cout << "* sees: " << (pNodeValues[in] == ELogic::High) << "\n";
-        });
 
         value ^= desc.m_invert;
 
@@ -178,7 +177,6 @@ bool update_combinational(
         // Request to write changes to node if value is changed
         if (pNodeValues[out] != outLogic)
         {
-            std::cout << "-> Notify Node: " << out << "\n";
             nodeUpdated = true;
             rUpdNodes.m_nodeDirty.set(out);
             rUpdNodes.m_nodeNewValues[out] = outLogic;
@@ -215,12 +213,9 @@ bool update_nodes(
         // Apply node value changes
         pValues[node] = pNewValues[node];
 
-        std::cout << "Updating node: " << char('A' + node) << "\n";
-
         // Notify subscribed elements
         for (ElementId subElem : nodeSubs[node])
         {
-            std::cout << "-> notify Element: " << subElem << "\n";
             elemNotified = true;
             ElemTypeId const type = elements.m_elemTypes[subElem];
             uint32_t const dense = elements.m_elemSparse[subElem];
