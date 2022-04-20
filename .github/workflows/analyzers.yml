@@ -41,7 +41,7 @@ jobs:
     - name: Configure
       if: ${{ contains(matrix.tool, '--cfg') }}
       run: |
-        cmake -B build -DLONGERON_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=R${{ matrix.buildconfig }}
+        cmake -B build -DLONGERON_BUILD_TESTS=ON -DLONGERON_BUILD_EXAMPLES=ON -DCMAKE_BUILD_TYPE=R${{ matrix.buildconfig }}
         
     - name: Compile Unit Tests
       if: ${{ contains(matrix.tool, '--build') }}
