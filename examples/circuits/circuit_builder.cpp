@@ -15,22 +15,26 @@ ElementId gate_combinatinal(CombinationalGates::GateDesc desc, std::initializer_
     LGRN_ASSERTM(t_wipElements != nullptr, "No elements in construction");
     LGRN_ASSERTM(t_wipGates != nullptr, "No elements in construction");
 
-    ElementId const id = t_wipElements->m_ids.create();
+    PerElemType &rPerType = t_wipElements->m_perType[gc_elemGate];
 
-    auto &rDenseVec = t_wipElements->m_typeDenseToElem[gc_elemGate];
-    uint32_t const denseIndex = rDenseVec.size();
-    rDenseVec.emplace_back(id);
+    // Create Element Id and Local Id
+    ElementId const elemId = t_wipElements->m_ids.create();
+    ElemLocalId const localId = rPerType.m_localIds.create();
 
-    t_wipElements->m_elemTypes[id] = gc_elemGate;
-    t_wipElements->m_elemSparse[id] = denseIndex;
-    t_wipGates->m_elemGates[id] = desc;
+    // Assign Type and Local ID
+    rPerType.m_localToElem[localId] = elemId;
+    t_wipElements->m_elemTypes[elemId] = gc_elemGate;
+    t_wipElements->m_elemToLocal[elemId] = localId;
 
-    NodeId *pData = pNodes->m_elemConnect.emplace(id, in.size() + 1);
+    // Assign gate description
+    t_wipGates->m_localGates[localId] = desc;
+
+    NodeId *pData = pNodes->m_elemConnect.emplace(elemId, in.size() + 1);
 
     pData[0] = out; // Port 0 is output
     std::copy(std::begin(in), std::end(in), pData + 1); // the rest are inputs
 
-    return id;
+    return elemId;
 }
 
 void populate_pub_sub(Elements const& elements, Nodes &rNodes)
@@ -61,7 +65,10 @@ void populate_pub_sub(Elements const& elements, Nodes &rNodes)
             int &rSubCount = nodeSubCount[*it];
             rSubCount --;
 
-            rNodes.m_nodeSubscribers[*it][rSubCount] = elem;
+            ElemTypeId const type = elements.m_elemTypes[elem];
+            ElemLocalId const local = elements.m_elemToLocal[elem];
+
+            rNodes.m_nodeSubscribers[*it][rSubCount] = {local, type};
         }
 
         // assign publisher

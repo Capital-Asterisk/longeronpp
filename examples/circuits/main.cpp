@@ -31,8 +31,9 @@ struct UserCircuit
      , m_maxNodes{maxNodes}
      , m_maxTypes{maxTypes}
     {
+        // Viciously allocate enough space for everything
         m_elements.m_ids                .reserve(maxElem);
-        m_elements.m_elemSparse         .resize(maxElem, ~uint32_t(0));
+        m_elements.m_elemToLocal        .reserve(maxElem);
         m_elements.m_elemTypes          .resize(maxElem, id_null<ElemTypeId>());
         m_logicNodes.m_nodeIds          .reserve(maxNodes);
         m_logicNodes.m_nodePublisher    .resize(maxNodes, id_null<ElementId>());
@@ -41,8 +42,14 @@ struct UserCircuit
         m_logicNodes.m_elemConnect      .ids_reserve(maxElem);
         m_logicNodes.m_elemConnect      .data_reserve(maxNodes);
         m_logicValues.m_nodeValues      .resize(maxNodes);
-        m_elements.m_typeDenseToElem    .resize(maxTypes);
-        m_gates.m_elemGates             .reserve(maxElem);
+        m_gates.m_localGates            .reserve(maxElem);
+
+        m_elements.m_perType            .resize(maxTypes);
+        for (PerElemType &rPerType : m_elements.m_perType)
+        {
+            rPerType.m_localIds.reserve(maxElem);
+            rPerType.m_localToElem.reserve(maxElem);
+        }
     }
 
     void build_begin()
@@ -65,15 +72,15 @@ struct UserCircuit
     {
         UpdateElemTypes_t out;
         out.resize(m_maxTypes);
-        out[gc_elemGate].m_denseDirty.ints().resize(m_gates.m_elemGates.size() / gc_bitVecIntSize + 1);
+        out[gc_elemGate].m_localDirty.ints().resize(m_elements.m_perType[gc_elemGate].m_localIds.vec().capacity());
 
         // Initially set all to dirty get to valid state
         // middle parts of a circuit may be unresponsive otherwise
         for (uint32_t elem : m_elements.m_ids.bitview().zeros())
         {
             ElemTypeId const type = m_elements.m_elemTypes[elem];
-            uint32_t const dense = m_elements.m_elemSparse[elem];
-            out[type].m_denseDirty.set(dense);
+            ElemLocalId const local = m_elements.m_elemToLocal[elem];
+            out[type].m_localDirty.set(local);
         }
 
         return out;
@@ -135,13 +142,13 @@ static int step_until_stable(
         rUpdLogic.m_nodeDirty.reset();
 
         elemNotified = update_combinational(
-                rUpdElems[gc_elemGate].m_denseDirty.ones(),
-                rCircuit.m_elements.m_typeDenseToElem[gc_elemGate].data(),
+                rUpdElems[gc_elemGate].m_localDirty.ones(),
+                rCircuit.m_elements.m_perType[gc_elemGate].m_localToElem.data(),
                 rCircuit.m_logicNodes.m_elemConnect,
                 rCircuit.m_logicValues.m_nodeValues.data(),
                 rCircuit.m_gates,
                 rUpdLogic);
-        rUpdElems[gc_elemGate].m_denseDirty.reset();
+        rUpdElems[gc_elemGate].m_localDirty.reset();
 
         steps ++;
     }
@@ -214,18 +221,19 @@ static void test_manual_build()
 {
     UserCircuit circuit(64, 64, 2);
 
-    // Add a single XOR gate
-    ElementId xorGate = circuit.m_elements.m_ids.create();
+    PerElemType &rPerType = circuit.m_elements.m_perType[gc_elemGate];
 
-    // Add to 'sparse set and assign type
-    auto &rDenseVec = circuit.m_elements.m_typeDenseToElem[gc_elemGate];
-    uint32_t const denseIndex = rDenseVec.size();
-    rDenseVec.emplace_back(xorGate);
-    circuit.m_elements.m_elemSparse[xorGate] = denseIndex;
-    circuit.m_elements.m_elemTypes[xorGate] = gc_elemGate;
+    // Create Element Id and Local Id
+    ElementId const xorElem = circuit.m_elements.m_ids.create();
+    ElemLocalId const xorLocal = rPerType.m_localIds.create();
+
+    // Assign Type and Local ID
+    rPerType.m_localToElem[xorLocal] = xorElem;
+    circuit.m_elements.m_elemTypes[xorElem] = gc_elemGate;
+    circuit.m_elements.m_elemToLocal[xorElem] = xorLocal;
 
     // Assign single gate as combinational XOR
-    circuit.m_gates.m_elemGates[xorGate] = { CombinationalGates::Op::XOR, false };
+    circuit.m_gates.m_localGates[xorLocal] = { CombinationalGates::Op::XOR, false };
 
     // create 3 Nodes
     std::array<NodeId, 3> nodes;
@@ -239,9 +247,9 @@ static void test_manual_build()
     circuit.m_logicNodes.m_elemConnect.emplace(gc_elemGate, {out, A, B});
 
     // Connect publishers and subscribers. Adds Node->Element mapping
-    circuit.m_logicNodes.m_nodePublisher[out] = xorGate;
-    circuit.m_logicNodes.m_nodeSubscribers.emplace(A, {xorGate});
-    circuit.m_logicNodes.m_nodeSubscribers.emplace(B, {xorGate});
+    circuit.m_logicNodes.m_nodePublisher[out] = xorElem;
+    circuit.m_logicNodes.m_nodeSubscribers.emplace(A, {{xorLocal, gc_elemGate}});
+    circuit.m_logicNodes.m_nodeSubscribers.emplace(B, {{xorLocal, gc_elemGate}});
 
     // Now everything is set, circuit can run!
 
@@ -354,8 +362,8 @@ static void test_sr_latch()
     for (uint32_t elem : circuit.m_elements.m_ids.bitview().zeros())
     {
         ElemTypeId const type = circuit.m_elements.m_elemTypes[elem];
-        uint32_t const dense = circuit.m_elements.m_elemSparse[elem];
-        updElems[type].m_denseDirty.set(dense);
+        ElemLocalId const local = circuit.m_elements.m_elemToLocal[elem];
+        updElems[type].m_localDirty.set(local);
     }
 
     std::cout << "NAND SR latch:\n";
@@ -410,8 +418,8 @@ static void test_edge_detect()
     for (uint32_t elem : circuit.m_elements.m_ids.bitview().zeros())
     {
         ElemTypeId const type = circuit.m_elements.m_elemTypes[elem];
-        uint32_t const dense = circuit.m_elements.m_elemSparse[elem];
-        updElems[type].m_denseDirty.set(dense);
+        ElemLocalId const local = circuit.m_elements.m_elemToLocal[elem];
+        updElems[type].m_localDirty.set(local);
     }
 
     std::cout << "Edge Detector:\n";

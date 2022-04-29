@@ -14,21 +14,39 @@ namespace circuits
 {
 
 using ElementId     = uint32_t;
+using ElemLocalId   = uint32_t;
 using ElemTypeId    = uint8_t;
 using NodeId        = uint32_t;
+
+/**
+ * @brief Keeps track of which circuit elements of a certain type exists
+ */
+struct PerElemType
+{
+    lgrn::IdRegistryStl<ElemLocalId>    m_localIds;
+    std::vector<ElementId>              m_localToElem;
+};
 
 /**
  * @brief Keeps track of which circuit elements exist and what type they are
  */
 struct Elements
 {
-    lgrn::IdRegistryStl<ElementId>          m_ids;
+    lgrn::IdRegistryStl<ElementId>      m_ids;
 
-    std::vector<uint32_t>                   m_elemSparse;
+    std::vector<ElemTypeId>             m_elemTypes;
+    std::vector<ElemLocalId>            m_elemToLocal;
 
-    // access with [ElemTypeId][sparse index]
-    std::vector<ElemTypeId>                 m_elemTypes;
-    std::vector< std::vector<ElementId> >   m_typeDenseToElem;
+    std::vector<PerElemType>            m_perType;
+};
+
+/**
+ * @brief Refers to an Element using Type and Local Id instead of an Element Id
+ */
+struct ElementPair
+{
+    ElemLocalId     m_id;
+    ElemTypeId      m_type;
 };
 
 /**
@@ -38,7 +56,7 @@ struct Nodes
 {
     // reminder: IntArrayMultiMap is kind of like an
     //           std::vector< std::vector<...> > but more memory efficient
-    using Subscribers_t = lgrn::IntArrayMultiMap<NodeId, ElementId>;
+    using Subscribers_t = lgrn::IntArrayMultiMap<NodeId, ElementPair>;
     using Connections_t = lgrn::IntArrayMultiMap<ElementId, NodeId>;
 
     lgrn::IdRegistryStl<NodeId>             m_nodeIds;
@@ -84,7 +102,7 @@ struct CombinationalGates
         bool m_invert;
     };
 
-    std::vector<GateDesc> m_elemGates;
+    std::vector<GateDesc> m_localGates;
 };
 
 //-----------------------------------------------------------------------------
@@ -97,7 +115,7 @@ constexpr std::size_t const gc_bitVecIntSize = 64;
 
 struct UpdateElem
 {
-    BitVector_t m_denseDirty;
+    BitVector_t m_localDirty;
 };
 
 using UpdateElemTypes_t = std::vector<UpdateElem>;
@@ -119,7 +137,7 @@ struct UpdateNodes
  * @brief Update Combinational Logic Gates and request node changes
  *
  * @param[in] toUpdate      Iterable range of element dence indices to update
- * @param[in] pDenseElem    ElementIDs from dence indices, indexed by toUpdate
+ * @param[in] pLocalToElem  Array to get Element IDs from Local IDs
  * @param[in] elemConnect   Element->Node connections
  * @param[in] pNodeValues   Values of logic nodes, used to detect changes
  * @param[in] gates         Data for combinational logic gates
@@ -130,7 +148,7 @@ struct UpdateNodes
 template <typename RANGE_T>
 bool update_combinational(
         RANGE_T&&                       toUpdate,
-        ElementId const*                pDenseElem,
+        ElementId const*                pLocalToElem,
         Nodes::Connections_t const&     elemConnect,
         ELogic const*                   pNodeValues,
         CombinationalGates const&       gates,
@@ -145,10 +163,10 @@ bool update_combinational(
 
     bool nodeUpdated = false;
 
-    for (uint32_t dense : toUpdate)
+    for (ElemLocalId local : toUpdate)
     {
-        ElementId const elem = pDenseElem[dense];
-        CombinationalGates::GateDesc const& desc = gates.m_elemGates[dense];
+        ElementId const elem = pLocalToElem[local];
+        CombinationalGates::GateDesc const& desc = gates.m_localGates[local];
 
         auto connectedNodes = elemConnect[elem];
         auto inFirst = connectedNodes.begin() + 1;
@@ -219,12 +237,10 @@ bool update_nodes(
         pValues[node] = pNewValues[node];
 
         // Notify subscribed elements
-        for (ElementId subElem : nodeSubs[node])
+        for (ElementPair subElem : nodeSubs[node])
         {
             elemNotified = true;
-            ElemTypeId const type = elements.m_elemTypes[subElem];
-            uint32_t const dense = elements.m_elemSparse[subElem];
-            rUpdElem[type].m_denseDirty.set(dense);
+            rUpdElem[subElem.m_type].m_localDirty.set(subElem.m_id);
         }
     }
 
