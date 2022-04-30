@@ -4,7 +4,7 @@
  */
 #pragma once
 
-#include "storage.hpp"
+#include "owner.hpp"
 
 #include <vector>
 
@@ -72,9 +72,9 @@ class IdRefCount : public RefCount<COUNT_T>
 
 public:
 
-    using Storage_t = IdStorage<ID_T, IdRefCount>;
+    using Owner_t = IdOwner<ID_T, IdRefCount>;
 
-    Storage_t ref_add(ID_T id)
+    Owner_t ref_add(ID_T id)
     {
         auto const idInt = id_int_t(id);
         if (this->size() <= idInt)
@@ -83,10 +83,10 @@ public:
         }
         (*this)[idInt] ++;
 
-        return Storage_t(id);
+        return Owner_t(id);
     }
 
-    void ref_release(Storage_t& rStorage) noexcept
+    void ref_release(Owner_t&& rStorage) noexcept
     {
         if (rStorage.has_value())
         {
