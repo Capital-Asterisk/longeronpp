@@ -280,7 +280,7 @@ struct World
     lgrn::IdRegistryStl<Entity> m_entities;
 
     std::vector< std::optional<ComponentA> > m_componentAs;
-    std::vector< std::optional<ComponentA> > m_componentBs;
+    std::vector< std::optional<ComponentB> > m_componentBs;
 }
 
 ```
@@ -332,15 +332,8 @@ A common problem in ECS is how entities can be deleted along with all their asso
 Entities that are going to be deleted can be added to a container, such as a vector or HierarchicalBitset. Individual systems can then delete their corresponding components.
 
 ```cpp
-
-struct World
-{
-    ...
-    // Perhaps make these for each thread that deletes entities and pass them into systems all at once?
-    lgrn::HierarchicalBitset m_toDelete;
-}
-  
-// main loop
+// Perhaps make these for each thread that deletes entities and pass them into systems all at once?
+lgrn::HierarchicalBitset m_toDelete;
 
 while (running)
 {
@@ -351,7 +344,11 @@ while (running)
     system_delete_a(world.m_componentAs, world.m_toDelete);
     system_delete_b(world.m_componentBs, world.m_toDelete);
     
-    for ()
+    // Delete the IDs
+    for (std::size_t entId : world.m_toDelete)
+    {
+        world.m_entities.remove(Entity(entId));
+    }
     
     // clear deleted entities for next frame
     world.m_toDelete.reset();
@@ -374,14 +371,14 @@ while (running)
     
     if (entitiesRequired != 0)
     {
+        newIds.clear();
         newIds.resize(entitiesRequired);  
           
         // create multiple IDs, store in newIds
-        world.m_ids.create(std::begin(newIds), entitiesRequired);
+        world.m_ids.create(std::begin(newIds), std::end(newIds));
           
         // pass in newly created IDs to the next system
-        system_create_resume(world.m_componentAs, newIds);  
-        newIds.clear();
+        system_create_resume(world.m_componentAs, newIds);
     }
 }
 
@@ -393,7 +390,17 @@ while (running)
 
 If you think about it very carefully, entities and components are simply persistent messages passed between systems. For example, entities and components that describe a solid cube is a way for a physics system to communicate with a render system. 
 
-System functions can easily accept queues and other values that aren't considered components.
+Passing data structures or components to system functions is an excellent alternative to OOP-style event listeners, signals, or observers.
+
+```cpp
+std::vector<SomeEvent> events; // can be dirty flags, commands, or really anything
+system_a(world, events); // writes
+
+// pass events into other systems (likely parallelizable)
+system_b(world, events);
+system_c(world, events);
+system_d(world, events);
+```
 
 ### Centralized world?
 
@@ -410,15 +417,19 @@ struct World
 }
 
 // Separate the entire renderer, ez.
-struct WorldRenderer
+struct WorldRendererOpenGL
 {
-    std::vector< std::optional<Transform> > m_transforms;
-    std::vector< std::optional<OpenGLTexture> > m_texture;
+    std::vector< std::optional<GlTransform> > m_transforms;
+    std::vector< std::optional<GlTexture> > m_texture;
 }
+
+// :)
+struct WorldRendererVulkan { ... };
+struct WorldRendererDirectX { ... };
 
 // ...
 
-main_render_function(world, worldRenderer);
+main_render_function_gl(world, worldRendererGl);
 
 ```
 
