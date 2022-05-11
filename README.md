@@ -71,7 +71,7 @@ lgrn::IdRegistryStl<Id> registry;
 registry.reserve(64);
 
 // Allocate data for our potential 64 objects using std::vector
-// Might want to use std::variant if constructors/destructors are important
+// Might want to use std::optional if constructors/destructors are important
 std::vector<Data> data(64);
 
 // Creating new objects is a matter of generating IDs
@@ -121,7 +121,7 @@ Id idC = fixedRegistry.create(); // returns 2
 
 It's common to map objects to strings, or to arrange objects in a hierarchy:
 
-```
+```cpp
 // Case 1: Relationship in structure
 // * Bloats the object
 
@@ -150,7 +150,9 @@ std::map<std::string, Id> m_nameToObject; // :)
 std::vector<Id> m_parents; // parent of objId = m_parents[id]
 ```
 
-### Reference-counting without pointers
+### Reference-counting and RAII-like safety without pointers
+
+Reference counting often requires using a class that stores a pointer to the count, and accesses this count during construction and destruction. Due to side effects, overhead, and general rule of avoiding pointers, Longeron++ provides an alternative solution.
 
 `lgrn::IdOwner` wraps a single integer ID type with some safety features:
 * Has a deleted copy constructor
@@ -159,9 +161,37 @@ std::vector<Id> m_parents; // parent of objId = m_parents[id]
 
 Safe reference-counted or unique Ids can be implemented by providing functions in this friend class that creates and or destroy IdOwners.
 
-Since IdOwners are just a single integer internally, there is theoretically no overhead in release builds.
+```cpp
+lgrn::IdRefCount<Id> refCounts;
+using Owner_t = lgrn::IdOwner< Id, lgrn::IdRefCount<Id> >;
 
-See the unit tests in the [Resources class from osp-magnum](#osp-magnum).
+Owner_t ownerA;
+Owner_t ownerB;
+
+ownerA.has_value(); // returns false
+ownerB.has_value(); // returns false
+
+ownerA = refCounts.ref_add( Id(1337) );
+
+ownerA.value();     // returns 1337
+ownerB.has_value(); // returns false
+
+std::swap(ownerA, ownerB);
+
+ownerA.has_value(); // returns false
+ownerB.value();     // returns 1337
+
+// only refCount is allowed to create new values
+ownerA = refCounts.ref_add(ownerB.value());
+
+ownerA.value();     // returns 1337
+ownerB.value();     // returns 1337
+
+refCounts.ref_release(std::move(ownerA)); // safely clear value
+ownerB = Owner_t{}; // KABOOM!!!! ABORT!!
+```
+
+Since IdOwners are [just a single integer internally](https://github.com/Capital-Asterisk/longeronpp/blob/5092a42f2e685da27bcdcbd84eee94a9e641ecf6/src/longeron/id_management/owner.hpp#L63), there is theoretically no overhead in release builds.
 
 ### Useful Containers
 
