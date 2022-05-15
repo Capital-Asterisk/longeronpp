@@ -54,6 +54,6 @@ jobs:
 
     - name: Clang Tidy Review
       if: ${{ startsWith(matrix.tool, 'clang-tidy') }}
-      uses: ZedThree/clang-tidy-review@v0.8.2
+      uses: ZedThree/clang-tidy-review@v0.8.3
       with:
         build_dir: build
