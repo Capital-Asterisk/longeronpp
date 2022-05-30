@@ -55,6 +55,11 @@ public:
 
     using base_t::size;
     using base_t::operator[];
+    template<typename IDX_T>
+    decltype(auto) operator[](IDX_T const& idx)
+    {
+        return base_t::operator[](std::size_t(idx));
+    }
 
     void resize(std::size_t newSize)
     {
