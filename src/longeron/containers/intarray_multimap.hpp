@@ -11,6 +11,10 @@
 #include <utility>
 #include <vector>
 
+#ifdef __cpp_lib_span
+#include <span>
+#endif
+
 namespace lgrn
 {
 
@@ -225,6 +229,11 @@ struct PartitionDescStl
     std::vector<DataSpan_t>     m_idToData;
 };
 
+
+#ifdef __cpp_lib_span
+template<typename ... ARGS_T>
+using Span = std::span<ARGS_T...>;
+#else
 // TODO: use std::span if C++20 is enabled
 template <typename DATA_T>
 class Span
@@ -244,6 +253,7 @@ private:
     DATA_T* m_data;
     std::size_t m_size;
 };
+#endif // __cpp_lib_span
 
 template< typename INT_T, typename DATA_T,
           typename ALLOC_T = std::allocator<DATA_T> >
