@@ -6,6 +6,7 @@
 
 #include "bit_iterator.hpp"
 #include "../utility/bitmath.hpp"
+#include "../utility/asserts.hpp"       // for LGRN_ASSERTMV
 
 #include <algorithm>
 #include <bitset>
@@ -102,6 +103,8 @@ public:
 template <typename RANGE_T>
 constexpr bool BitView<RANGE_T>::test(std::size_t bit) const noexcept
 {
+    LGRN_ASSERTMV(bit < size(), "Bit position out of range", bit, size());
+
     std::size_t const block = bit / smc_bitSize;
     std::size_t const blockBit = bit % smc_bitSize;
 
@@ -111,6 +114,8 @@ constexpr bool BitView<RANGE_T>::test(std::size_t bit) const noexcept
 template <typename RANGE_T>
 constexpr void BitView<RANGE_T>::set(std::size_t bit) noexcept
 {
+    LGRN_ASSERTMV(bit < size(), "Bit position out of range", bit, size());
+
     std::size_t const block = bit / smc_bitSize;
     std::size_t const blockBit = bit % smc_bitSize;
 
@@ -126,6 +131,8 @@ constexpr void BitView<RANGE_T>::set() noexcept
 template <typename RANGE_T>
 constexpr void BitView<RANGE_T>::reset(std::size_t bit) noexcept
 {
+    LGRN_ASSERTMV(bit < size(), "Bit position out of range", bit, size());
+
     std::size_t const block = bit / smc_bitSize;
     std::size_t const blockBit = bit % smc_bitSize;
 

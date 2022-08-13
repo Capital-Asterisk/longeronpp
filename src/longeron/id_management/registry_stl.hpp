@@ -69,8 +69,8 @@ public:
                      ~uint64_t(0));
     }
 
-    auto& vec() noexcept { return underlying_t::bitview().ints(); }
-    auto const& vec() const noexcept { return underlying_t::bitview().ints(); }
+    constexpr auto& vec() noexcept { return underlying_t::bitview().ints(); }
+    constexpr auto const& vec() const noexcept { return underlying_t::bitview().ints(); }
 };
 
 

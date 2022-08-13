@@ -67,9 +67,9 @@ public:
     constexpr BitPosIterator() noexcept = default;
     constexpr BitPosIterator(ADVANCE_SKIP_T&& skip, IT_T begin, ITB_T end, IT_T it, int_t bit, std::size_t dist) noexcept
      : ADVANCE_SKIP_T   {skip}
-     , m_it             {it}
      , m_begin          {begin}
      , m_end            {end}
+     , m_it             {it}
      , m_distance       {dist}
     {
         if ( (it != end) )
