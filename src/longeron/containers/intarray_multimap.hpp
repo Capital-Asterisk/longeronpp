@@ -470,7 +470,7 @@ public:
     {
         if (!m_partitions.exists(id) || !m_partitions.id_in_range(id))
         {
-            return {nullptr, 0};
+            return {nullptr, std::size_t(0)};
         }
         DataSpan_t const &span = m_partitions.m_idToData[id];
         return {&m_data[span.m_offset], span.m_size};
@@ -480,7 +480,7 @@ public:
     {
         if (!m_partitions.exists(id) || !m_partitions.id_in_range(id))
         {
-            return {nullptr, 0};
+            return {nullptr, std::size_t(0)};
         }
         DataSpan_t const &span = m_partitions.m_idToData[id];
         return {&m_data[span.m_offset], span.m_size};
