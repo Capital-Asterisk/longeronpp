@@ -239,6 +239,11 @@ template <typename DATA_T>
 class Span
 {
 public:
+    Span()
+     : m_data(nullptr)
+     , m_size(0)
+    { }
+
     Span(DATA_T* data, std::size_t size)
      : m_data(data)
      , m_size(size)
@@ -470,7 +475,7 @@ public:
     {
         if (!m_partitions.exists(id) || !m_partitions.id_in_range(id))
         {
-            return {nullptr, std::size_t(0)};
+            return { };
         }
         DataSpan_t const &span = m_partitions.m_idToData[id];
         return {&m_data[span.m_offset], span.m_size};
@@ -480,7 +485,7 @@ public:
     {
         if (!m_partitions.exists(id) || !m_partitions.id_in_range(id))
         {
-            return {nullptr, std::size_t(0)};
+            return { };
         }
         DataSpan_t const &span = m_partitions.m_idToData[id];
         return {&m_data[span.m_offset], span.m_size};
