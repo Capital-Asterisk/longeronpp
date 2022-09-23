@@ -3,9 +3,9 @@ cmake_minimum_required(VERSION 3.12)
 
 project(longeron VERSION 0.1.0)
 
-set(CMAKE_CXX_STANDARD 17)
-
 add_library(longeron INTERFACE)
+
+target_compile_features(longeron INTERFACE cxx_std_20)
 
 target_include_directories(longeron INTERFACE src)
 
