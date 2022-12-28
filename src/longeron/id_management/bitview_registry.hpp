@@ -14,6 +14,13 @@
 namespace lgrn
 {
 
+/**
+ * @brief Adapts a bitview to an interface for creating/destroying unique
+ *        integer IDs
+ *
+ * Ones are used as free IDs, and zeros are used as taken. This is because
+ * the bitwise operations used are slightly faster at searching for ones.
+ */
 template<typename BITVIEW_T, typename ID_T>
 class BitViewIdRegistry : private BITVIEW_T
 {

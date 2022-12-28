@@ -56,7 +56,7 @@
 
     // Assert 'template'
     #define _LGRN_ASSERT(expr, msg, extra)                  \
-    if (!(expr)) [[unlikely]]                               \
+    if (!(expr))                                            \
     {                                                       \
         std::cerr << _LGRN_HEADER(msg) << _LGRN_INFO()      \
                   << "* Expr: " << (#expr) << std::endl     \

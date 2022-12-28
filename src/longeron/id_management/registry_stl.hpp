@@ -69,8 +69,8 @@ public:
                      ~uint64_t(0));
     }
 
-    constexpr auto& vec() noexcept { return underlying_t::bitview().ints(); }
-    constexpr auto const& vec() const noexcept { return underlying_t::bitview().ints(); }
+    [[nodiscard]] constexpr auto& vec() noexcept { return underlying_t::bitview().ints(); }
+    [[nodiscard]] constexpr auto const& vec() const noexcept { return underlying_t::bitview().ints(); }
 };
 
 
@@ -88,7 +88,7 @@ IT_T IdRegistryStl<ID_T, NO_AUTO_RESIZE, BITVIEW_T>::create(IT_T first, ITB_T la
         {
             first = underlying_t::create(first, last);
 
-            if (first != last) [[unlikely]]
+            if (first != last)
             {
                 // out of space, not all IDs were created
 
@@ -98,7 +98,7 @@ IT_T IdRegistryStl<ID_T, NO_AUTO_RESIZE, BITVIEW_T>::create(IT_T first, ITB_T la
                 vec().resize(vec().capacity(), ~uint64_t(0));
 
             }
-            else [[likely]]
+            else
             {
                 break;
             }
