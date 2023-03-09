@@ -18,7 +18,7 @@
 namespace lgrn
 {
 
-template<typename INT_T, typename SIZE_T, typename PARTITION_SIZE_T>
+template<typename INT_T, typename SIZE_T>
 class PartitionUtils
 {
 public:
@@ -27,26 +27,26 @@ public:
 
     struct DataSpan
     {
-        SIZE_T m_offset;
-        PARTITION_SIZE_T m_size;
+        SIZE_T  m_offset;
+        SIZE_T  m_size;
     };
 
     struct Free
     {
-        SIZE_T m_offset{0};
-        INT_T m_partitionNum{0};
-        INT_T m_partitionCount{0};
-        PARTITION_SIZE_T m_size{0};
+        SIZE_T  m_offset{0};
+        INT_T   m_partitionNum{0};
+        INT_T   m_partitionCount{0};
+        SIZE_T  m_size{0};
     };
 
     struct NewPartition
     {
-        SIZE_T m_offset;
-        INT_T m_partitionNum;
+        SIZE_T  m_offset;
+        INT_T   m_partitionNum;
     };
 
     static NewPartition create_partition(
-            PARTITION_SIZE_T prtnSize,
+            SIZE_T prtnSize,
             Free& rLastFree) noexcept
     {
         // Check remaining space
@@ -69,10 +69,10 @@ public:
 
 }; // class Partition
 
-template<typename INT_T, typename SIZE_T, typename PARTITION_SIZE_T>
+template<typename INT_T, typename SIZE_T>
 struct PartitionDescStl
 {
-    using Utils_t           = PartitionUtils<INT_T, SIZE_T, PARTITION_SIZE_T>;
+    using Utils_t           = PartitionUtils<INT_T, SIZE_T>;
     using NewPartition_t    = typename Utils_t::NewPartition;
     using DataSpan_t        = typename Utils_t::DataSpan;
     using Free_t            = typename Utils_t::Free;
@@ -98,7 +98,7 @@ struct PartitionDescStl
     constexpr std::size_t count() const noexcept { return m_idCount; }
     constexpr std::size_t used() const noexcept { return m_dataUsed; }
 
-    NewPartition_t create(INT_T id, PARTITION_SIZE_T size)
+    NewPartition_t create(INT_T id, SIZE_T size)
     {
         NewPartition_t prtn = Utils_t::create_partition(size, m_freeLast);
         m_partitionToId[prtn.m_partitionNum] = id;
@@ -265,10 +265,9 @@ template< typename INT_T, typename DATA_T,
 class IntArrayMultiMap
 {
     using alloc_traits_t    = std::allocator_traits<ALLOC_T>;
-    using partition_size_t  = unsigned short;
 
-    using PartitionDesc_t   = PartitionDescStl<INT_T, std::size_t, partition_size_t>;
-    using Utils_t           = PartitionUtils<INT_T, std::size_t, partition_size_t>;
+    using PartitionDesc_t   = PartitionDescStl<INT_T, std::size_t>;
+    using Utils_t           = PartitionUtils<INT_T, std::size_t>;
 
     using NewPartition_t    = typename Utils_t::NewPartition;
     using Free_t            = typename Utils_t::Free;
@@ -371,7 +370,7 @@ public:
                 {
                     DataSpan_t &rSpan = m_partitions.m_idToData[id];
                     std::size_t const offset = rSpan.m_offset;
-                    partition_size_t const size = rSpan.m_size;
+                    std::size_t const size = rSpan.m_size;
 
                     // Make sure partitions fit in new space
                     LGRN_ASSERT(writeOffset <= capacity);
@@ -415,13 +414,13 @@ public:
     {
         LGRN_ASSERTMV(m_partitions.id_in_range(id), "ID out of range", id, ids_capacity());
         LGRN_ASSERTMV(!m_partitions.exists(id), "ID does not exist", id);
-        partition_size_t size = std::distance(first, last);
+        std::size_t size = std::distance(first, last);
         DATA_T* data = create_uninitialized(id, size);
         std::uninitialized_move(first, last, data);
         return data;
     }
 
-    DATA_T* emplace(INT_T id, partition_size_t size)
+    DATA_T* emplace(INT_T id, std::size_t size)
     {
         LGRN_ASSERTMV(m_partitions.id_in_range(id), "ID out of range", id, ids_capacity());
         LGRN_ASSERTMV(!m_partitions.exists(id), "ID does not exist", id);
@@ -493,7 +492,7 @@ public:
 
 private:
 
-    DATA_T* create_uninitialized(INT_T id, partition_size_t size)
+    DATA_T* create_uninitialized(INT_T id, std::size_t size)
     {
          NewPartition_t prtn = m_partitions.create(id, size);
          return &m_data[prtn.m_offset];
