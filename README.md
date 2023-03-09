@@ -1,7 +1,5 @@
 ![# longeron++](longeron.png) 
 
-*Structure for your framework*
-
 ![Windows](https://github.com/Capital-Asterisk/longeronpp/actions/workflows/windows.yml/badge.svg)
 ![Linux](https://github.com/Capital-Asterisk/longeronpp/actions/workflows/linux.yml/badge.svg)
 ![Mac OS X](https://github.com/Capital-Asterisk/longeronpp/actions/workflows/macos.yml/badge.svg)
