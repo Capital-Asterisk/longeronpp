@@ -37,7 +37,7 @@ struct underlying_int_type< TYPE_T, std::enable_if_t< std::is_enum_v<TYPE_T> > >
 { };
 
 template<typename TYPE_T>
-struct underlying_int_type< TYPE_T, std::enable_if_t< ! std::is_enum_v<TYPE_T> > >
+struct underlying_int_type< TYPE_T, std::enable_if_t< std::is_integral_v<TYPE_T> > >
  : type_identity<TYPE_T>
 { };
 

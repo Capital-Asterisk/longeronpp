@@ -4,6 +4,7 @@
  */
 #pragma once
 
+#include "iterator_pair.hpp"            // for IteratorPair
 #include "bit_iterator.hpp"
 #include "../utility/bitmath.hpp"
 #include "../utility/asserts.hpp"       // for LGRN_ASSERTMV
@@ -163,22 +164,6 @@ constexpr std::size_t BitView<RANGE_T>::count() const noexcept
     }
     return total;
 }
-
-
-template <typename IT_T, typename ITB_T>
-struct IteratorPair
-{
-    constexpr IteratorPair(IT_T first, ITB_T last)
-     : m_begin{first}
-     , m_end{last}
-    { }
-
-    constexpr IT_T begin() const noexcept { return m_begin; }
-    constexpr IT_T end() const noexcept { return m_end; }
-
-    IT_T m_begin;
-    ITB_T m_end;
-};
 
 template <typename IT_T, typename ITB_T>
 constexpr auto bit_view(IT_T first, ITB_T last)

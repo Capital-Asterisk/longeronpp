@@ -7,11 +7,12 @@
 #include "../utility/bitmath.hpp"
 #include "../utility/asserts.hpp"
 
+#include <cstdint>
 #include <array>
 #include <bitset>
-#include <cstdint>
 #include <memory>
 #include <stdexcept>
+#include <utility>
 
 namespace lgrn
 {
@@ -159,6 +160,27 @@ public:
         {
             set();
         }
+    }
+
+    HierarchicalBitset(HierarchicalBitset&& move)
+     : m_rows       { std::exchange(move.m_rows,        {}) }
+     , m_size       { std::exchange(move.m_size,        0) }
+     , m_count      { std::exchange(move.m_count,       0) }
+     , m_topLevel   { std::exchange(move.m_topLevel,    0) }
+     , m_blockCount { std::exchange(move.m_blockCount,  0) }
+     , m_blocks     { std::move(move.m_blocks) }
+    { }
+
+    HierarchicalBitset& operator=(HierarchicalBitset&& move)
+    {
+        m_rows          = std::exchange(move.m_rows,        {});
+        m_size          = std::exchange(move.m_size,        0);
+        m_count         = std::exchange(move.m_count,       0);
+        m_topLevel      = std::exchange(move.m_topLevel,    0);
+        m_blockCount    = std::exchange(move.m_blockCount,  0);
+        m_blocks        = std::move(move.m_blocks);
+
+        return *this;
     }
 
     std::size_t front() const noexcept

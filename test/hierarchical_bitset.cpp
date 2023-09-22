@@ -189,7 +189,7 @@ TEST(HierarchicalBitset, EmptyContainer)
     EXPECT_EQ(bitset.size(), 0);
     EXPECT_EQ(bitset.data(), nullptr);
 
-    for (std::size_t _ : bitset)
+    for ([[maybe_unused]] std::size_t _ : bitset)
     {
         ASSERT_TRUE(false);
     }
