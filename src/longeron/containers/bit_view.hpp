@@ -22,46 +22,59 @@ namespace lgrn
 template <typename RANGE_T>
 class BitView : private RANGE_T
 {
-    using iter_t = decltype(std::cbegin(std::declval<RANGE_T&>()));
-    using sntl_t = decltype(std::cend  (std::declval<RANGE_T&>()));
+public:
 
-    using int_t = std::remove_cv_t<typename std::iterator_traits<iter_t>::value_type>;
+    using iter_t    = decltype(std::cbegin(std::declval<RANGE_T&>()));
+    using sntl_t    = decltype(std::cend  (std::declval<RANGE_T&>()));
+    using int_t     = std::remove_cv_t<typename std::iterator_traits<iter_t>::value_type>;
 
     static constexpr int smc_bitSize = sizeof(int_t) * 8;
 
     static_assert(std::is_unsigned_v<int_t>, "Use only unsigned types for bit manipulation");
 
     template <bool ONES>
-    class BitViewValues
+    class BitPositionsRangeView
     {
         using ValueIt_t = BitPosIterator< iter_t, sntl_t, ONES >;
+        using Sentinel_t = typename ValueIt_t::Sentinel;
     public:
 
-        constexpr BitViewValues(BitView const& view)
+        constexpr BitPositionsRangeView(BitView const& view)
          : first{ std::cbegin(view.ints()) }
          , last { std::cend  (view.ints()) }
         { }
 
         constexpr ValueIt_t begin() const noexcept
         {
-            return ValueIt_t(last, first, 0, 0);
+            return ValueIt_t(first, last, 0, 0);
         }
 
-        constexpr BitPosSentinel end() const noexcept
+        constexpr ValueIt_t begin_at(std::size_t const bitPos) const noexcept
         {
-            return BitPosSentinel{};
+            auto const intPos    = bitPos / 64;
+            auto const intBitPos = bitPos % 64;
+
+            return ValueIt_t(std::next(first, intPos), last, 64*intPos, intBitPos);
+        }
+
+        constexpr Sentinel_t end() const noexcept
+        {
+            return Sentinel_t{};
         }
     private:
         iter_t first;
         sntl_t last;
     };
 
-public:
-
     static constexpr std::size_t int_bitsize() noexcept { return smc_bitSize; }
 
-    constexpr BitView() = default;
+    constexpr BitView()                    = default;
+    constexpr BitView(BitView const& copy) = default;
+    constexpr BitView(BitView&& move)      = default;
     constexpr BitView(RANGE_T range) : RANGE_T(range) { }
+
+    constexpr BitView& operator=(BitView const& copy) = default;
+    constexpr BitView& operator=(BitView&& move)      = default;
 
     constexpr bool test(std::size_t bit) const noexcept;
 
@@ -73,10 +86,17 @@ public:
     constexpr std::size_t size() const noexcept;
     constexpr std::size_t count() const noexcept;
 
-    constexpr BitViewValues<true> ones() const noexcept { return {*this}; }
-    constexpr BitViewValues<false> zeros() const noexcept { return {*this}; }
+    /**
+     * @brief Return a range type (with begin/end functions) used to iterate positions of ones bits
+     */
+    constexpr BitPositionsRangeView<true> ones() const noexcept { return {*this}; }
 
-    constexpr RANGE_T& ints() noexcept { return static_cast<RANGE_T&>(*this); }
+    /**
+     * @brief Return a range type (with begin/end functions) used to iterate positions of zeros bits
+     */
+    constexpr BitPositionsRangeView<false> zeros() const noexcept { return {*this}; }
+
+    constexpr RANGE_T&       ints()       noexcept { return static_cast<RANGE_T&>(*this); }
     constexpr RANGE_T const& ints() const noexcept { return static_cast<RANGE_T const&>(*this); }
 };
 
@@ -85,7 +105,7 @@ constexpr bool BitView<RANGE_T>::test(std::size_t bit) const noexcept
 {
     LGRN_ASSERTMV(bit < size(), "Bit position out of range", bit, size());
 
-    std::size_t const block = bit / smc_bitSize;
+    std::size_t const block    = bit / smc_bitSize;
     std::size_t const blockBit = bit % smc_bitSize;
 
     return bit_test(*std::next(std::begin(ints()), block), blockBit);

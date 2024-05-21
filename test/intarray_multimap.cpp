@@ -3,7 +3,7 @@
  * SPDX-FileCopyrightText: 2021 Neal Nicdao <chrisnicdao0@gmail.com>
  */
 #include <longeron/containers/intarray_multimap.hpp>
-#include <longeron/id_management/registry.hpp>
+#include <longeron/id_management/registry_stl.hpp>
 
 #include <gtest/gtest.h>
 
@@ -12,7 +12,7 @@
 #include <unordered_map>
 #include <vector>
 
-using lgrn::IdRegistry;
+using lgrn::IdRegistryStl;
 using lgrn::IntArrayMultiMap;
 
 using id_t = unsigned int;
@@ -184,7 +184,8 @@ TEST(IntArrayMultiMap, RandomCreationAndDeletion)
 
     std::unordered_map< id_t, std::vector<int> > control;
     IntArrayMultiMap<id_t, int> multimap(sc_idMax * sc_createMax, sc_idMax);
-    IdRegistry<id_t, true> ids(sc_idMax);
+    IdRegistryStl<id_t, true> ids;
+    ids.reserve(sc_idMax);
 
     for (int i = 0; i < sc_repetitions; i ++)
     {

@@ -40,7 +40,7 @@ ElementId gate_combinatinal(CombinationalGates::GateDesc desc, std::initializer_
 void populate_pub_sub(Elements const& elements, Nodes &rNodes)
 {
     std::vector<int> nodeSubCount(rNodes.m_nodeIds.capacity(), 0); // can we reach 1 million subscribers?
-    for (ElementId elem : elements.m_ids.bitview().zeros())
+    for (ElementId elem : elements.m_ids)
     {
         auto nodes = rNodes.m_elemConnect[elem];
         // skip first, port 0 is the publisher

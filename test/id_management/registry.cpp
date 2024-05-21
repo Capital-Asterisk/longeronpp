@@ -24,33 +24,58 @@ TEST(IdRegistry, ManageIds)
     Id idB = registry.create();
     Id idC = registry.create();
 
-    EXPECT_TRUE( registry.exists(idA) );
-    EXPECT_TRUE( registry.exists(idB) );
-    EXPECT_TRUE( registry.exists(idC) );
-
-    EXPECT_EQ( registry.size(), 3 );
-
-    ASSERT_NE( idA, idB );
-    ASSERT_NE( idB, idC );
-    ASSERT_NE( idC, idA );
+    ASSERT_EQ(std::size_t(idA), 0);
+    ASSERT_EQ(std::size_t(idB), 1);
+    ASSERT_EQ(std::size_t(idC), 2);
+    ASSERT_TRUE( registry.exists(idA) );
+    ASSERT_TRUE( registry.exists(idB) );
+    ASSERT_TRUE( registry.exists(idC) );
+    ASSERT_EQ( registry.size(), 3 );
 
     registry.remove( idB );
 
-    EXPECT_TRUE( registry.exists(idA) );
-    EXPECT_FALSE( registry.exists(idB) );
-    EXPECT_TRUE( registry.exists(idC) );
+    ASSERT_TRUE(  registry.exists(idA) );
+    ASSERT_FALSE( registry.exists(idB) );
+    ASSERT_TRUE(  registry.exists(idC) );
+    ASSERT_EQ( registry.size(), 2 );
 
-    EXPECT_EQ( registry.size(), 2 );
+    idB = registry.create();
 
-    std::array<Id, 32> ids;
-    registry.create(std::begin(ids), std::end(ids));
+    ASSERT_EQ(std::size_t(idB), 1);
+    ASSERT_TRUE( registry.exists(idA) );
+    ASSERT_TRUE( registry.exists(idB) );
+    ASSERT_TRUE( registry.exists(idC) );
+    ASSERT_EQ( registry.size(), 3 );
 
-    for (Id id : ids)
+    std::array<Id, 128> idsArray;
+    registry.create(std::begin(idsArray), std::end(idsArray));
+
+    for (Id id : idsArray)
     {
         EXPECT_TRUE( registry.exists(id) );
     }
 
-    EXPECT_EQ( registry.size(), 34 );
+    ASSERT_TRUE(std::equal(idsArray.begin(), idsArray.end(), std::next(registry.begin(), 3)));
+
+    ASSERT_EQ( registry.size(), 3+128 );
+}
+
+// IdRegistryStl generator
+TEST(IdRegistry, Generator)
+{
+    lgrn::IdRegistryStl<Id> registry;
+
+    auto generator = registry.generator();
+
+    for (std::size_t expectedId = 0; expectedId < 10000; ++expectedId)
+    {
+        Id const id = generator.create();
+
+        ASSERT_EQ(std::size_t(id), expectedId);
+        ASSERT_TRUE( registry.exists(id) );
+    }
+
+    ASSERT_EQ( registry.size(), 10000 );
 }
 
 // A more chaotic test of repeated adding a random amount of new IDs then

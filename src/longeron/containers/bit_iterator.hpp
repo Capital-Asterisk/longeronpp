@@ -11,35 +11,36 @@
 namespace lgrn
 {
 
-struct BitPosSentinel { };
-
 /**
  * @brief Iterate positions of ones bits or zeros bits within an integer range
  *
  * This works by storing an internal iterator to the specified int range, and saving the current
  * value. Per iteration (operator++), this iterator will scan through the bits of the current value
- * from LSB to MSB, then repeatedly increment its internal iterator to search for the next int
- * containing ones or zeros bits.
+ * from LSB to MSB. If there's no bits left, then the internal iterator will be repeatedly
+ * incremented to search for the next int containing ones or zeros bits.
  *
  * @warning Do not modify the integer range while this iterator is alive.
  */
-template<typename ITER_T, typename SNTL_T, bool ONES>
+template<typename ITER_T, typename SNTL_T, bool ONES, typename VALUE_T = std::size_t>
 class BitPosIterator
 {
     using int_t = typename std::iterator_traits<ITER_T>::value_type;
 
     static_assert(std::is_unsigned_v<int_t>, "Use only unsigned types for bit manipulation");
 public:
+
     // TODO: consider bi-directional?
     using iterator_category = std::forward_iterator_tag;
     using difference_type   = std::ptrdiff_t;
-    using value_type        = std::size_t;
+    using value_type        = VALUE_T;
     using pointer           = void;
     using reference         = void;
 
+    struct Sentinel { };
+
     constexpr BitPosIterator() noexcept = default;
 //    constexpr BitPosIterator(BitPosSentinel const&) noexcept : BitPosIterator() { }
-    constexpr BitPosIterator(SNTL_T end, ITER_T it, int_t bit, std::size_t dist) noexcept
+    constexpr BitPosIterator(ITER_T it, SNTL_T end, std::size_t dist, int bit) noexcept
      : m_end            {end}
      , m_it             {it}
      , m_distance       {dist}
@@ -86,7 +87,8 @@ public:
 
     constexpr value_type operator*() const noexcept
     {
-        return m_distance + ctz(m_block);
+        std::size_t const pos = m_distance + ctz(m_block);
+        return VALUE_T{pos};
     }
 
 private:
@@ -104,13 +106,13 @@ private:
     }
 
     constexpr friend bool operator==(BitPosIterator const& lhs,
-                                     BitPosSentinel const& rhs) noexcept
+                                     Sentinel       const& rhs) noexcept
     {
         return lhs.m_it == lhs.m_end;
     }
 
     constexpr friend bool operator!=(BitPosIterator const& lhs,
-                                     BitPosSentinel const& rhs) noexcept
+                                     Sentinel       const& rhs) noexcept
     {
         return lhs.m_it != lhs.m_end;
     }
@@ -129,7 +131,7 @@ private:
     }
 
     // End need to be stored becuase of the "skip forward until we find a bit" behaviour
-    SNTL_T    const m_end;
+    SNTL_T          m_end;
     ITER_T          m_it;
     std::size_t     m_distance{~std::size_t(0)};
     int_t           m_block{0};
