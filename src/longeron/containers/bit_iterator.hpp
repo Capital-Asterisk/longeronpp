@@ -27,6 +27,8 @@ class BitPosIterator
     using int_t = typename std::iterator_traits<ITER_T>::value_type;
 
     static_assert(std::is_unsigned_v<int_t>, "Use only unsigned types for bit manipulation");
+
+    static constexpr int_t smc_emptyBlock = ONES ? int_t(0) : ~int_t(0);
 public:
 
     // TODO: consider bi-directional?
@@ -71,13 +73,12 @@ public:
         if (m_block == 0)
         {
             // Skip empty blocks (no ones or no zero bits)
-            constexpr int_t c_emptyBlock = ONES ? int_t(0) : ~int_t(0);
             do
             {
                 ++m_it;
                 m_distance += sizeof(int_t) * 8;
             }
-            while (m_it != m_end && *m_it == c_emptyBlock);
+            while (m_it != m_end && *m_it == smc_emptyBlock);
 
             m_block = (m_it != m_end) ? int_iter_value() : 0;
         }
@@ -88,7 +89,7 @@ public:
     constexpr value_type operator*() const noexcept
     {
         std::size_t const pos = m_distance + ctz(m_block);
-        return VALUE_T{pos};
+        return VALUE_T(pos);
     }
 
 private:
@@ -130,7 +131,7 @@ private:
         }
     }
 
-    // End need to be stored becuase of the "skip forward until we find a bit" behaviour
+    // End needs to be stored becuase of the "skip forward until we find a bit" behaviour
     SNTL_T          m_end;
     ITER_T          m_it;
     std::size_t     m_distance{~std::size_t(0)};

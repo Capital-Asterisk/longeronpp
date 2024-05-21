@@ -51,10 +51,10 @@ public:
 
         constexpr ValueIt_t begin_at(std::size_t const bitPos) const noexcept
         {
-            auto const intPos    = bitPos / 64;
-            auto const intBitPos = bitPos % 64;
+            auto const intPos    = bitPos / smc_bitSize;
+            auto const intBitPos = bitPos % smc_bitSize;
 
-            return ValueIt_t(std::next(first, intPos), last, 64*intPos, intBitPos);
+            return ValueIt_t(std::next(first, intPos), last, smc_bitSize*intPos, intBitPos);
         }
 
         constexpr Sentinel_t end() const noexcept
@@ -68,13 +68,13 @@ public:
 
     static constexpr std::size_t int_bitsize() noexcept { return smc_bitSize; }
 
-    constexpr BitView()                    = default;
-    constexpr BitView(BitView const& copy) = default;
-    constexpr BitView(BitView&& move)      = default;
+    constexpr BitView()                                     = default;
+    constexpr BitView(BitView const& copy)                  = default;
+    constexpr BitView(BitView&& move) noexcept              = default;
     constexpr BitView(RANGE_T range) : RANGE_T(range) { }
 
-    constexpr BitView& operator=(BitView const& copy) = default;
-    constexpr BitView& operator=(BitView&& move)      = default;
+    constexpr BitView& operator=(BitView const& copy)       = default;
+    constexpr BitView& operator=(BitView&& move) noexcept   = default;
 
     constexpr bool test(std::size_t bit) const noexcept;
 

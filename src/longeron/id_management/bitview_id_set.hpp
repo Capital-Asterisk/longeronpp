@@ -55,10 +55,8 @@ public:
 
     bool empty() const noexcept
     {
-        constexpr id_int_t c_emptyInt = ONES ? id_int_t(0) : ~id_int_t(0);
-
         return std::all_of(std::begin(bitview().ints()), std::end(bitview().ints()),
-                           [] ( id_int_t const value )  { return value == c_emptyInt; });
+                           [] ( id_int_t const value )  { return value == smc_emptyInt; });
     }
 
     // Iterators
@@ -131,7 +129,7 @@ public:
         bool const exists = impl_contains(idInt);
 
         impl_erase(idInt);
-        return exists;
+        return std::size_t(exists);
     }
 
     template <typename ITER_T, typename SNTL_T>
@@ -157,6 +155,8 @@ public:
     }
 
 private:
+
+    static constexpr id_int_t smc_emptyInt = ONES ? id_int_t(0) : ~id_int_t(0);
 
     bool impl_contains(std::size_t const pos) const
     {
