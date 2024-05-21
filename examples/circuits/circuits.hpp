@@ -5,6 +5,8 @@
 #pragma once
 
 #include <longeron/containers/intarray_multimap.hpp>
+#include <longeron/id_management/id_set_stl.hpp>
+#include <longeron/id_management/keyed_vec_stl.hpp>
 #include <longeron/id_management/registry_stl.hpp>
 
 #include <algorithm>
@@ -13,18 +15,24 @@
 namespace circuits
 {
 
-using ElementId     = uint32_t;
-using ElemLocalId   = uint32_t;
-using ElemTypeId    = uint8_t;
-using NodeId        = uint32_t;
+
+// Enum classes used as integer "strong typedef" and can't be implicitly casted to each other,
+// preventing logic errors and cognative load from accidentally mixing them up.
+enum class ElemLocalId : std::uint32_t { };
+enum class ElemTypeId  : std::uint8_t  { };
+
+// lgrn::IntArrayMultiMap does not (yet?) support strongly typedefed ID types
+using ElementId = std::uint32_t;
+using NodeId    = std::uint32_t;
+
 
 /**
  * @brief Keeps track of which circuit elements of a certain type exists
  */
 struct PerElemType
 {
-    lgrn::IdRegistryStl<ElemLocalId>    m_localIds;
-    std::vector<ElementId>              m_localToElem;
+    lgrn::IdRegistryStl<ElemLocalId>       m_localIds;
+    lgrn::KeyedVec<ElemLocalId, ElementId> m_localToElem;
 };
 
 /**
@@ -32,12 +40,12 @@ struct PerElemType
  */
 struct Elements
 {
-    lgrn::IdRegistryStl<ElementId>      m_ids;
+    lgrn::IdRegistryStl<ElementId>          m_ids;
 
-    std::vector<ElemTypeId>             m_elemTypes;
-    std::vector<ElemLocalId>            m_elemToLocal;
+    lgrn::KeyedVec<ElementId, ElemTypeId>   m_elemTypes;
+    lgrn::KeyedVec<ElementId, ElemLocalId>  m_elemToLocal;
 
-    std::vector<PerElemType>            m_perType;
+    lgrn::KeyedVec<ElemTypeId, PerElemType> m_perType;
 };
 
 /**
@@ -48,6 +56,7 @@ struct ElementPair
     ElemLocalId     m_id;
     ElemTypeId      m_type;
 };
+
 
 /**
  * @brief Connects cirucit elements together as Nodes
@@ -64,7 +73,7 @@ struct Nodes
     // Node-to-Element connections
     // Each node can have multiple subscribers, but only one publisher
     Subscribers_t                           m_nodeSubscribers;
-    std::vector<ElementId>                  m_nodePublisher;
+    lgrn::KeyedVec<NodeId, ElementId>       m_nodePublisher;
 
     // Corresponding Element-to-Node connections
     // [ElementId][PortId] -> NodeId
@@ -80,7 +89,7 @@ struct Nodes
 template <typename VALUE_T>
 struct NodeValues
 {
-    std::vector<VALUE_T> m_nodeValues;
+    lgrn::KeyedVec<NodeId, VALUE_T> m_nodeValues;
 };
 
 //-----------------------------------------------------------------------------
@@ -102,33 +111,31 @@ struct CombinationalGates
         bool m_invert;
     };
 
-    std::vector<GateDesc> m_localGates;
+    lgrn::KeyedVec<ElemLocalId, GateDesc> m_localGates;
 };
 
 //-----------------------------------------------------------------------------
 
 // Updating
 
-using BitVector_t = lgrn::BitView< std::vector<uint64_t> >;
-
 constexpr std::size_t const gc_bitVecIntSize = 64;
 
 struct UpdateElem
 {
-    BitVector_t m_localDirty;
+    lgrn::IdSetStl<ElemLocalId> m_localDirty;
 };
 
-using UpdateElemTypes_t = std::vector<UpdateElem>;
+using UpdateElemTypes_t = lgrn::KeyedVec<ElemTypeId, UpdateElem>;
 
 template <typename VALUE_T>
 struct UpdateNodes
 {
-    BitVector_t                             m_nodeDirty;
-    std::vector<VALUE_T>                    m_nodeNewValues;
+    lgrn::IdSetStl<NodeId>          m_nodeDirty;
+    lgrn::KeyedVec<NodeId, VALUE_T> m_nodeNewValues;
 
     void assign(NodeId node, VALUE_T&& value)
     {
-        m_nodeDirty.set(node);
+        m_nodeDirty.insert(node);
         m_nodeNewValues[node] = std::forward<VALUE_T>(value);
     }
 };
@@ -147,26 +154,26 @@ struct UpdateNodes
  */
 template <typename RANGE_T>
 bool update_combinational(
-        RANGE_T&&                       toUpdate,
-        ElementId const*                pLocalToElem,
-        Nodes::Connections_t const&     elemConnect,
-        ELogic const*                   pNodeValues,
-        CombinationalGates const&       gates,
-        UpdateNodes<ELogic>&            rUpdNodes) noexcept
+        RANGE_T&&                           toUpdate,
+        lgrn::KeyedVec<ElemLocalId, ElementId> const &localToElem,
+        Nodes::Connections_t          const &elemConnect,
+        lgrn::KeyedVec<NodeId, ELogic>      &nodeValues,
+        CombinationalGates            const &gates,
+        UpdateNodes<ELogic>                 &rUpdNodes) noexcept
 {
     using Op = CombinationalGates::Op;
 
-    auto const is_logic_high = [pNodeValues] (NodeId in) noexcept -> bool
+    auto const is_logic_high = [&nodeValues] (NodeId in) noexcept -> bool
     {
-        return pNodeValues[in] == ELogic::High;
+        return nodeValues[in] == ELogic::High;
     };
 
     bool nodeUpdated = false;
 
     for (ElemLocalId local : toUpdate)
     {
-        ElementId const elem = pLocalToElem[local];
-        CombinationalGates::GateDesc const& desc = gates.m_localGates[local];
+        ElementId                    const elem  = localToElem[local];
+        CombinationalGates::GateDesc const &desc = gates.m_localGates[local];
 
         auto connectedNodes = elemConnect[elem];
         auto inFirst = connectedNodes.begin() + 1;
@@ -197,10 +204,10 @@ bool update_combinational(
         NodeId out = *connectedNodes.begin();
 
         // Request to write changes to node if value is changed
-        if (pNodeValues[out] != outLogic)
+        if (nodeValues[out] != outLogic)
         {
             nodeUpdated = true;
-            rUpdNodes.m_nodeDirty.set(out);
+            rUpdNodes.m_nodeDirty.insert(out);
             rUpdNodes.m_nodeNewValues[out] = outLogic;
         }
     }
@@ -222,25 +229,25 @@ bool update_combinational(
  */
 template <typename VALUE_T, typename RANGE_T>
 bool update_nodes(
-        RANGE_T&&                       toUpdate,
-        Nodes::Subscribers_t const&     nodeSubs,
-        Elements const&                 elements,
-        VALUE_T const*                  pNewValues,
-        VALUE_T*                        pValues,
-        UpdateElemTypes_t&              rUpdElem)
+        RANGE_T                                 &&toUpdate,
+        Nodes::Subscribers_t              const &nodeSubs,
+        Elements                          const &elements,
+        lgrn::KeyedVec<NodeId, VALUE_T>   const &newValues,
+        lgrn::KeyedVec<NodeId, VALUE_T>         &values,
+        UpdateElemTypes_t                       &rUpdElem)
 {
     bool elemNotified = false;
 
-    for (uint32_t node : toUpdate)
+    for (NodeId node : toUpdate)
     {
         // Apply node value changes
-        pValues[node] = pNewValues[node];
+        values[node] = newValues[node];
 
         // Notify subscribed elements
         for (ElementPair subElem : nodeSubs[node])
         {
             elemNotified = true;
-            rUpdElem[subElem.m_type].m_localDirty.set(subElem.m_id);
+            rUpdElem[subElem.m_type].m_localDirty.insert(subElem.m_id);
         }
     }
 

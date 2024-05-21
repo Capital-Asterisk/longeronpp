@@ -13,8 +13,6 @@
 #include <iostream>
 #include <vector>
 
-#include <optional>
-
 using namespace circuits;
 
 using lgrn::id_null;
@@ -72,15 +70,15 @@ struct UserCircuit
     {
         UpdateElemTypes_t out;
         out.resize(m_maxTypes);
-        out[gc_elemGate].m_localDirty.ints().resize(m_elements.m_perType[gc_elemGate].m_localIds.vec().capacity());
+        out[gc_elemGate].m_localDirty.resize(m_elements.m_perType[gc_elemGate].m_localIds.capacity());
 
         // Initially set all to dirty get to valid state
         // middle parts of a circuit may be unresponsive otherwise
-        for (uint32_t elem : m_elements.m_ids.bitview().zeros())
+        for (ElementId elem : m_elements.m_ids)
         {
-            ElemTypeId const type = m_elements.m_elemTypes[elem];
+            ElemTypeId  const type  = m_elements.m_elemTypes[elem];
             ElemLocalId const local = m_elements.m_elemToLocal[elem];
-            out[type].m_localDirty.set(local);
+            out[type].m_localDirty.insert(local);
         }
 
         return out;
@@ -89,7 +87,7 @@ struct UserCircuit
     UpdateNodes<ELogic> setup_logic_updater()
     {
         UpdateNodes<ELogic> out;
-        out.m_nodeDirty.ints().resize(m_maxNodes / gc_bitVecIntSize + 1);
+        out.m_nodeDirty.resize(m_maxNodes);
         out.m_nodeNewValues.resize(m_maxNodes);
 
         return out;
@@ -133,22 +131,22 @@ static int step_until_stable(
     while (elemNotified && steps < maxSteps)
     {
         update_nodes(
-                rUpdLogic.m_nodeDirty.ones(),
+                rUpdLogic.m_nodeDirty,
                 rCircuit.m_logicNodes.m_nodeSubscribers,
                 rCircuit.m_elements,
-                rUpdLogic.m_nodeNewValues.data(),
-                rCircuit.m_logicValues.m_nodeValues.data(),
+                rUpdLogic.m_nodeNewValues,
+                rCircuit.m_logicValues.m_nodeValues,
                 rUpdElems);
-        rUpdLogic.m_nodeDirty.reset();
+        rUpdLogic.m_nodeDirty.clear();
 
         elemNotified = update_combinational(
-                rUpdElems[gc_elemGate].m_localDirty.ones(),
-                rCircuit.m_elements.m_perType[gc_elemGate].m_localToElem.data(),
+                rUpdElems[gc_elemGate].m_localDirty,
+                rCircuit.m_elements.m_perType[gc_elemGate].m_localToElem,
                 rCircuit.m_logicNodes.m_elemConnect,
-                rCircuit.m_logicValues.m_nodeValues.data(),
+                rCircuit.m_logicValues.m_nodeValues,
                 rCircuit.m_gates,
                 rUpdLogic);
-        rUpdElems[gc_elemGate].m_localDirty.reset();
+        rUpdElems[gc_elemGate].m_localDirty.clear();
 
         steps ++;
     }
@@ -244,7 +242,7 @@ static void test_manual_build()
 
     // Connect 'ports' of XOR gate. Adds a Element->Node mapping
     // For basic gates, first (0) is the output, the rest are inputs
-    circuit.m_logicNodes.m_elemConnect.emplace(gc_elemGate, {out, A, B});
+    circuit.m_logicNodes.m_elemConnect.emplace(xorElem, {out, A, B});
 
     // Connect publishers and subscribers. Adds Node->Element mapping
     circuit.m_logicNodes.m_nodePublisher[out] = xorElem;
@@ -253,7 +251,7 @@ static void test_manual_build()
 
     // Now everything is set, circuit can run!
 
-    UpdateElemTypes_t updElems = circuit.setup_element_updater();
+    UpdateElemTypes_t   updElems = circuit.setup_element_updater();
     UpdateNodes<ELogic> updLogic = circuit.setup_logic_updater();
 
     auto const& outVal = circuit.m_logicValues.m_nodeValues[out];
@@ -308,7 +306,7 @@ static void test_xor_nand()
 
     circuit.build_end();
 
-    UpdateElemTypes_t updElems = circuit.setup_element_updater();
+    UpdateElemTypes_t   updElems = circuit.setup_element_updater();
     UpdateNodes<ELogic> updLogic = circuit.setup_logic_updater();
 
     auto const& outVal = circuit.m_logicValues.m_nodeValues[out];
@@ -361,9 +359,9 @@ static void test_sr_latch()
     // initialize to get to valid state
     for (uint32_t elem : circuit.m_elements.m_ids.bitview().zeros())
     {
-        ElemTypeId const type = circuit.m_elements.m_elemTypes[elem];
+        ElemTypeId  const type  = circuit.m_elements.m_elemTypes[elem];
         ElemLocalId const local = circuit.m_elements.m_elemToLocal[elem];
-        updElems[type].m_localDirty.set(local);
+        updElems[type].m_localDirty.insert(local);
     }
 
     std::cout << "NAND SR latch:\n";
@@ -417,9 +415,9 @@ static void test_edge_detect()
     // initialize to get to valid state
     for (uint32_t elem : circuit.m_elements.m_ids.bitview().zeros())
     {
-        ElemTypeId const type = circuit.m_elements.m_elemTypes[elem];
+        ElemTypeId  const type  = circuit.m_elements.m_elemTypes[elem];
         ElemLocalId const local = circuit.m_elements.m_elemToLocal[elem];
-        updElems[type].m_localDirty.set(local);
+        updElems[type].m_localDirty.insert(local);
     }
 
     std::cout << "Edge Detector:\n";
