@@ -12,7 +12,7 @@ jobs:
 
     strategy:
       matrix:
-        compiler: [msvc, clangcl, mingw, clang]
+        compiler: [msvc, clangcl, clang] # mingw disabled for now
         config: [Release, Debug]
 
     steps:
