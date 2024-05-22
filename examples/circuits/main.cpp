@@ -133,7 +133,6 @@ static int step_until_stable(
         update_nodes(
                 rUpdLogic.m_nodeDirty,
                 rCircuit.m_logicNodes.m_nodeSubscribers,
-                rCircuit.m_elements,
                 rUpdLogic.m_nodeNewValues,
                 rCircuit.m_logicValues.m_nodeValues,
                 rUpdElems);

@@ -18,17 +18,16 @@ namespace lgrn
  *        std::vector<std::uint64_t> internally.
  */
 template<typename ID_T, bool NO_AUTO_RESIZE = false,
-         typename RANGE_T = std::vector<std::uint64_t> >
-class IdRegistryStl : private BitViewIdRegistry<RANGE_T, ID_T>
+         typename BITVIEW_T = BitView< std::vector<std::uint64_t> > >
+class IdRegistryStl : private BitViewIdRegistry<BITVIEW_T, ID_T>
 {
 public:
-
-    using base_t    = BitViewIdRegistry<RANGE_T, ID_T>;
-    using bitview_t = typename base_t::base_t;
+    using Base_t    = BitViewIdRegistry<BITVIEW_T, ID_T>;
+    using BitView_t = typename Base_t::Base_t;
 
     class Generator
     {
-        using Iterator_t = BitPosIterator< typename bitview_t::iter_t, typename bitview_t::sntl_t, true >;
+        using OnesIter_t = typename BitView_t::OnesIter_t;
     public:
         Generator(IdRegistryStl &rRegistry)
          : iter{rRegistry.bitview().ones().begin()}
@@ -40,22 +39,23 @@ public:
         ID_T operator()() { return create(); }
 
     private:
-        Iterator_t      iter;
+        OnesIter_t      iter;
         IdRegistryStl   &rRegistry;
     };
 
     friend Generator;
 
-    IdRegistryStl() = default;
-    IdRegistryStl(base_t reg) : base_t(reg) { }
+    IdRegistryStl() noexcept = default;
+    IdRegistryStl(Base_t reg) : Base_t{ std::move(reg) } { }
 
-    using base_t::begin;
-    using base_t::bitview;
-    using base_t::capacity;
-    using base_t::end;
-    using base_t::exists;
-    using base_t::remove;
-    using base_t::size;
+    using Base_t::Base_t;
+    using Base_t::begin;
+    using Base_t::bitview;
+    using Base_t::capacity;
+    using Base_t::end;
+    using Base_t::exists;
+    using Base_t::remove;
+    using Base_t::size;
 
     /**
      * @brief Create a single ID
@@ -94,11 +94,11 @@ public:
     void reserve(std::size_t n)
     {
         // Resize with all new bits set, as 1 is for free Id
-        vec().resize(lgrn::div_ceil(n, base_t::bitview().int_bitsize()), ~uint64_t(0));
+        vec().resize(lgrn::div_ceil(n, Base_t::bitview().int_bitsize()), ~uint64_t(0));
     }
 
-    [[nodiscard]] constexpr auto&       vec()       noexcept { return base_t::bitview().ints(); }
-    [[nodiscard]] constexpr auto const& vec() const noexcept { return base_t::bitview().ints(); }
+    [[nodiscard]] constexpr auto&       vec()       noexcept { return Base_t::bitview().ints(); }
+    [[nodiscard]] constexpr auto const& vec() const noexcept { return Base_t::bitview().ints(); }
 
 private:
 
@@ -121,13 +121,13 @@ ITER_T IdRegistryStl<ID_T, NO_AUTO_RESIZE, RANGE_T>::create(ITER_T first, SNTL_T
 {
     if constexpr (NO_AUTO_RESIZE)
     {
-        return base_t::create(first, last);
+        return Base_t::create(first, last);
     }
     else
     {
         while (true)
         {
-            first = base_t::create(first, last);
+            first = Base_t::create(first, last);
 
             if (first == last)
             {
@@ -145,7 +145,7 @@ ITER_T IdRegistryStl<ID_T, NO_AUTO_RESIZE, RANGE_T>::create(ITER_T first, SNTL_T
 template<typename ID_T, bool NO_AUTO_RESIZE, typename RANGE_T>
 ID_T IdRegistryStl<ID_T, NO_AUTO_RESIZE, RANGE_T>::Generator::create()
 {
-    using Sentinel_t = typename Generator::Iterator_t::Sentinel;
+    using Sentinel_t = typename Generator::OnesIter_t::Sentinel;
 
     if (iter == Sentinel_t{}) // If out of space
     {

@@ -47,7 +47,7 @@ TEST(IdRegistry, ManageIds)
     ASSERT_TRUE( registry.exists(idC) );
     ASSERT_EQ( registry.size(), 3 );
 
-    std::array<Id, 128> idsArray;
+    std::array<Id, 128> idsArray{};
     registry.create(std::begin(idsArray), std::end(idsArray));
 
     for (Id id : idsArray)

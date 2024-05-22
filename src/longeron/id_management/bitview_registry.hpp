@@ -4,9 +4,8 @@
  */
 #pragma once
 
+#include "cast_iterator.hpp"
 #include "null.hpp"
-
-#include "../containers/bit_view.hpp"
 
 #include "../utility/enum_traits.hpp"
 #include "../utility/asserts.hpp"
@@ -20,20 +19,23 @@ namespace lgrn
  * Ones are used as free IDs, and zeros are used as taken. This is because the bitwise operations
  * used are slightly faster at searching for ones.
  */
-template<typename RANGE_T, typename ID_T>
-class BitViewIdRegistry : private BitView<RANGE_T>
+template<typename BITVIEW_T, typename ID_T>
+class BitViewIdRegistry : private BITVIEW_T
 {
+    using id_int_t      = underlying_int_type_t<ID_T>;
+
 public:
 
-    using id_int_t      = underlying_int_type_t<ID_T>;
-    using base_t        = BitView<RANGE_T>;
+    using Base_t        = BITVIEW_T;
+    using Iterator_t    = IdCastIterator<typename Base_t::ZerosIter_t, ID_T>;
+    using Sentinel_t    = typename Base_t::ZerosSntl_t;
 
-    using IdIterator_t  = BitPosIterator<typename base_t::iter_t, typename base_t::sntl_t, false, ID_T>;
-
+    constexpr Base_t&       bitview()       noexcept { return static_cast<Base_t&>(*this); }
+    constexpr Base_t const& bitview() const noexcept { return static_cast<Base_t const&>(*this); }
 
     BitViewIdRegistry() = default;
-    BitViewIdRegistry(base_t bitview) : base_t(bitview) {};
-    BitViewIdRegistry(base_t bitview, [[maybe_unused]] ID_T) : base_t(bitview) {};
+    BitViewIdRegistry(Base_t bitview) : Base_t(bitview) {};
+    BitViewIdRegistry(Base_t bitview, [[maybe_unused]] ID_T) : Base_t(bitview) {};
 
     /**
      * @brief Create a single ID
@@ -56,12 +58,12 @@ public:
     /**
      * @return Max number of IDs that can be stored
      */
-    constexpr std::size_t capacity() const noexcept { return base_t::size(); }
+    constexpr std::size_t capacity() const noexcept { return Base_t::size(); }
 
     /**
      * @return Current number of registered IDs, determined by counting bits
      */
-    constexpr std::size_t size() const { return capacity() - base_t::count(); }
+    constexpr std::size_t size() const { return capacity() - Base_t::count(); }
 
     /**
      * @brief Remove an ID. This will mark it for reuse
@@ -69,7 +71,7 @@ public:
     void remove(ID_T id) noexcept
     {
         LGRN_ASSERTMV(exists(id), "ID does not exist", std::size_t(id));
-        base_t::set(id_int_t(id));
+        Base_t::set(id_int_t(id));
     }
 
     /**
@@ -77,28 +79,26 @@ public:
      */
     bool exists(ID_T id) const noexcept
     {
-        return (id_int_t(id) < capacity()) && ( ! base_t::test(id_int_t(id)) );
+        return (id_int_t(id) < capacity()) && ( ! Base_t::test(id_int_t(id)) );
     };
 
     /**
      * @brief Iterate all existing IDs. Read-only
      */
-    constexpr IdIterator_t begin() const noexcept
+    constexpr Iterator_t begin() const noexcept
     {
-        return IdIterator_t(std::begin(bitview().ints()), std::end(bitview().ints()), 0, 0);
+        return Iterator_t{ bitview().zeros().begin() };
     }
 
-    constexpr typename IdIterator_t::Sentinel end() const noexcept { return {}; }
+    constexpr Sentinel_t end() const noexcept { return {}; }
 
-    constexpr base_t&       bitview()       noexcept { return static_cast<base_t&>(*this); }
-    constexpr base_t const& bitview() const noexcept { return static_cast<base_t const&>(*this); }
 };
 
-template<typename RANGE_T, typename ID_T>
+template<typename BITVIEW_T, typename ID_T>
 template<typename ITER_T, typename SNTL_T>
-ITER_T BitViewIdRegistry<RANGE_T, ID_T>::create(ITER_T first, SNTL_T last)
+ITER_T BitViewIdRegistry<BITVIEW_T, ID_T>::create(ITER_T first, SNTL_T last)
 {
-    auto const &ones     = base_t::ones();
+    auto const &ones     = Base_t::ones();
     auto       onesFirst = ones.begin();
     auto const &onesLast = ones.end();
 
@@ -107,7 +107,7 @@ ITER_T BitViewIdRegistry<RANGE_T, ID_T>::create(ITER_T first, SNTL_T last)
         std::size_t const pos = *onesFirst;
         *first = ID_T(pos);
 
-        base_t::reset(pos);
+        Base_t::reset(pos);
 
         std::advance(onesFirst, 1);
         std::advance(first, 1);
@@ -115,16 +115,16 @@ ITER_T BitViewIdRegistry<RANGE_T, ID_T>::create(ITER_T first, SNTL_T last)
     return first;
 }
 
-template <typename IT_T, typename ITB_T, typename ID_T>
-constexpr auto bitview_id_reg(IT_T first, ITB_T last, [[maybe_unused]] ID_T id)
-{
-    return BitViewIdRegistry(lgrn::bit_view(first, last), id);
-}
+//template <typename IT_T, typename ITB_T, typename ID_T>
+//constexpr auto bitview_id_reg(IT_T first, ITB_T last, [[maybe_unused]] ID_T id)
+//{
+//    return BitViewIdRegistry(lgrn::bit_view(first, last), id);
+//}
 
-template <typename RANGE_T, typename ID_T>
-constexpr auto bitview_id_reg(RANGE_T& rRange, [[maybe_unused]] ID_T id = ID_T(0))
-{
-    return bitview_id_reg(std::begin(rRange), std::end(rRange), ID_T(0));
-}
+//template <typename BITVIEW_T, typename ID_T>
+//constexpr auto bitview_id_reg(BITVIEW_T& rRange, [[maybe_unused]] ID_T id = ID_T(0))
+//{
+//    return bitview_id_reg(std::begin(rRange), std::end(rRange), ID_T(0));
+//}
 
 } // namespace lgrn

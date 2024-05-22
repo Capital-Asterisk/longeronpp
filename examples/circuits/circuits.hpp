@@ -231,7 +231,6 @@ template <typename VALUE_T, typename RANGE_T>
 bool update_nodes(
         RANGE_T                                 &&toUpdate,
         Nodes::Subscribers_t              const &nodeSubs,
-        Elements                          const &elements,
         lgrn::KeyedVec<NodeId, VALUE_T>   const &newValues,
         lgrn::KeyedVec<NodeId, VALUE_T>         &values,
         UpdateElemTypes_t                       &rUpdElem)

@@ -6,6 +6,11 @@
 
 #include "bitview_id_set.hpp"
 
+#include "../containers/bit_view.hpp"
+#include "../utility/bitmath.hpp"
+
+#include <cstdint>
+
 #include <vector>
 
 namespace lgrn
@@ -17,19 +22,19 @@ namespace lgrn
  *
  * No automatic reallocations. Use \c reserve();
  */
-template<typename ID_T>
-class IdSetStl : public BitViewIdSet<std::vector<uint64_t>, ID_T>
+template<typename ID_T, typename BITVIEW_T = lgrn::BitView< std::vector<std::uint64_t> > >
+class IdSetStl : public BitViewIdSet<BITVIEW_T, ID_T>
 {
 public:
-    using base_t    = BitViewIdSet<std::vector<uint64_t>, ID_T>;
-    using bitview_t = typename base_t::base_t;
+    using Base_t    = BitViewIdSet<BITVIEW_T, ID_T>;
+    using bitview_t = typename Base_t::Base_t;
 
-    [[nodiscard]] constexpr auto&       vec()       noexcept { return base_t::bitview().ints(); }
-    [[nodiscard]] constexpr auto const& vec() const noexcept { return base_t::bitview().ints(); }
+    [[nodiscard]] constexpr auto&       vec()       noexcept { return Base_t::bitview().ints(); }
+    [[nodiscard]] constexpr auto const& vec() const noexcept { return Base_t::bitview().ints(); }
 
     void resize(std::size_t n)
     {
-        vec().resize(lgrn::div_ceil(n, base_t::bitview().int_bitsize()), 0);
+        vec().resize(lgrn::div_ceil(n, Base_t::bitview().int_bitsize()), 0);
     }
 };
 

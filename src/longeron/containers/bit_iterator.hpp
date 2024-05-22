@@ -21,7 +21,7 @@ namespace lgrn
  *
  * @warning Do not modify the integer range while this iterator is alive.
  */
-template<typename ITER_T, typename SNTL_T, bool ONES, typename VALUE_T = std::size_t>
+template<typename ITER_T, typename SNTL_T, bool ONES>
 class BitPosIterator
 {
     using int_t = typename std::iterator_traits<ITER_T>::value_type;
@@ -34,14 +34,13 @@ public:
     // TODO: consider bi-directional?
     using iterator_category = std::forward_iterator_tag;
     using difference_type   = std::ptrdiff_t;
-    using value_type        = VALUE_T;
+    using value_type        = std::size_t;
     using pointer           = void;
     using reference         = void;
 
     struct Sentinel { };
 
     constexpr BitPosIterator() noexcept = default;
-//    constexpr BitPosIterator(BitPosSentinel const&) noexcept : BitPosIterator() { }
     constexpr BitPosIterator(ITER_T it, SNTL_T end, std::size_t dist, int bit) noexcept
      : m_end            {end}
      , m_it             {it}
@@ -63,6 +62,8 @@ public:
 
     constexpr BitPosIterator& operator=(BitPosIterator const& copy) noexcept = default;
     constexpr BitPosIterator& operator=(BitPosIterator&& move) noexcept = default;
+
+    ~BitPosIterator() = default;
 
     constexpr BitPosIterator& operator++() noexcept
     {
@@ -89,7 +90,7 @@ public:
     constexpr value_type operator*() const noexcept
     {
         std::size_t const pos = m_distance + ctz(m_block);
-        return VALUE_T(pos);
+        return pos;
     }
 
 private:
@@ -107,13 +108,13 @@ private:
     }
 
     constexpr friend bool operator==(BitPosIterator const& lhs,
-                                     Sentinel       const& rhs) noexcept
+                                     Sentinel       const&) noexcept
     {
         return lhs.m_it == lhs.m_end;
     }
 
     constexpr friend bool operator!=(BitPosIterator const& lhs,
-                                     Sentinel       const& rhs) noexcept
+                                     Sentinel       const&) noexcept
     {
         return lhs.m_it != lhs.m_end;
     }
@@ -138,5 +139,33 @@ private:
     int_t           m_block{0};
 };
 
+
+template <typename RANGE_ITER_T, typename RANGE_SNTL_T,
+          typename POS_ITER_T,   typename POS_SNTL_T, typename INT_T>
+class BitPosRangeView
+{
+    static constexpr int smc_bitSize = sizeof(INT_T) * 8;
+public:
+
+    constexpr BitPosRangeView(RANGE_ITER_T first, RANGE_SNTL_T last)
+     : first{ std::move(first) }
+     , last { std::move(last) }
+    { }
+
+    constexpr POS_ITER_T begin() const noexcept { return POS_ITER_T(first, last, 0, 0); }
+
+    constexpr POS_ITER_T begin_at(std::size_t const bitPos) const noexcept
+    {
+        auto const intPos    = bitPos / smc_bitSize;
+        auto const intBitPos = bitPos % smc_bitSize;
+
+        return POS_ITER_T(std::next(first, intPos), last, smc_bitSize*intPos, intBitPos);
+    }
+
+    constexpr POS_SNTL_T end() const noexcept { return POS_SNTL_T{}; }
+private:
+    RANGE_ITER_T first;
+    RANGE_SNTL_T last;
+};
 
 } // namespace lgrn

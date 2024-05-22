@@ -16,55 +16,35 @@
 namespace lgrn
 {
 
+// Inheritance here is mostly used for Empty Base Optimization, not an "is-a" relationship
+
 /**
  * @brief Mixin that adapts a bit interface around an integer range
  */
 template <typename RANGE_T>
 class BitView : private RANGE_T
 {
+    using RangeIter_t  = decltype(std::cbegin(std::declval<RANGE_T&>()));
+    using RangeSntl_t  = decltype(std::cend  (std::declval<RANGE_T&>()));
+
 public:
+    using IntRange_t    = RANGE_T;
 
-    using iter_t    = decltype(std::cbegin(std::declval<RANGE_T&>()));
-    using sntl_t    = decltype(std::cend  (std::declval<RANGE_T&>()));
-    using int_t     = std::remove_cv_t<typename std::iterator_traits<iter_t>::value_type>;
+    using ZerosIter_t   = BitPosIterator< RangeIter_t, RangeSntl_t, false >;
+    using ZerosSntl_t   = typename ZerosIter_t::Sentinel;
 
+    using OnesIter_t    = BitPosIterator< RangeIter_t, RangeSntl_t, true >;
+    using OnesSntl_t    = typename OnesIter_t::Sentinel;
+
+private:
+    using int_t         = std::remove_cv_t<typename std::iterator_traits<RangeIter_t>::value_type>;
+    static_assert(std::is_unsigned_v<int_t>, "Use only unsigned types for bit manipulation");
     static constexpr int smc_bitSize = sizeof(int_t) * 8;
 
-    static_assert(std::is_unsigned_v<int_t>, "Use only unsigned types for bit manipulation");
+public:
 
-    template <bool ONES>
-    class BitPositionsRangeView
-    {
-        using ValueIt_t = BitPosIterator< iter_t, sntl_t, ONES >;
-        using Sentinel_t = typename ValueIt_t::Sentinel;
-    public:
-
-        constexpr BitPositionsRangeView(BitView const& view)
-         : first{ std::cbegin(view.ints()) }
-         , last { std::cend  (view.ints()) }
-        { }
-
-        constexpr ValueIt_t begin() const noexcept
-        {
-            return ValueIt_t(first, last, 0, 0);
-        }
-
-        constexpr ValueIt_t begin_at(std::size_t const bitPos) const noexcept
-        {
-            auto const intPos    = bitPos / smc_bitSize;
-            auto const intBitPos = bitPos % smc_bitSize;
-
-            return ValueIt_t(std::next(first, intPos), last, smc_bitSize*intPos, intBitPos);
-        }
-
-        constexpr Sentinel_t end() const noexcept
-        {
-            return Sentinel_t{};
-        }
-    private:
-        iter_t first;
-        sntl_t last;
-    };
+    using OnesRangeView_t  = BitPosRangeView<RangeIter_t, RangeSntl_t, OnesIter_t,  OnesSntl_t,  int_t>;
+    using ZerosRangeView_t = BitPosRangeView<RangeIter_t, RangeSntl_t, ZerosIter_t, ZerosSntl_t, int_t>;
 
     static constexpr std::size_t int_bitsize() noexcept { return smc_bitSize; }
 
@@ -89,15 +69,17 @@ public:
     /**
      * @brief Return a range type (with begin/end functions) used to iterate positions of ones bits
      */
-    constexpr BitPositionsRangeView<true> ones() const noexcept { return {*this}; }
+    constexpr OnesRangeView_t ones() const noexcept
+    { return { std::cbegin(ints()), std::cend(ints()) }; }
 
     /**
      * @brief Return a range type (with begin/end functions) used to iterate positions of zeros bits
      */
-    constexpr BitPositionsRangeView<false> zeros() const noexcept { return {*this}; }
+    constexpr ZerosRangeView_t zeros() const noexcept
+    { return { std::cbegin(ints()), std::cend(ints()) }; }
 
-    constexpr RANGE_T&       ints()       noexcept { return static_cast<RANGE_T&>(*this); }
-    constexpr RANGE_T const& ints() const noexcept { return static_cast<RANGE_T const&>(*this); }
+    constexpr IntRange_t&       ints()       noexcept { return static_cast<IntRange_t&>(*this); }
+    constexpr IntRange_t const& ints() const noexcept { return static_cast<IntRange_t const&>(*this); }
 };
 
 template <typename RANGE_T>
@@ -155,7 +137,7 @@ template <typename RANGE_T>
 constexpr std::size_t BitView<RANGE_T>::count() const noexcept
 {
     std::size_t total = 0;
-    iter_t it = std::begin(ints());
+    auto it = std::begin(ints());
     while (it != std::end(ints()))
     {
         total += std::bitset<smc_bitSize>(*it).count();

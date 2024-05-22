@@ -4,39 +4,45 @@
  */
 #pragma once
 
-#include "../containers/bit_view.hpp"
-
+#include "cast_iterator.hpp"
 #include "../utility/enum_traits.hpp"
 
+#include <algorithm>
 
 namespace lgrn
 {
 
 /**
  * @brief Wraps a BitView to be used as a set of IDs. The interface similar to std::set<ID_T>.
+ *
+ * @warning Untested when ONES = false
  */
-template<typename RANGE_T, typename ID_T, bool ONES = true>
-class BitViewIdSet : private BitView<RANGE_T>
+template<typename BITVIEW_T, typename ID_T, bool ONES = true>
+class BitViewIdSet : private BITVIEW_T
 {
+    using id_int_t      = underlying_int_type_t<ID_T>;
+    using IterBase_t    = std::conditional_t<ONES, typename BITVIEW_T::OnesIter_t,
+                                                   typename BITVIEW_T::ZerosIter_t>;
+    using SntlBase_t    = std::conditional_t<ONES, typename BITVIEW_T::OnesSntl_t,
+                                                   typename BITVIEW_T::ZerosSntl_t>;
 public:
 
-    using id_int_t      = underlying_int_type_t<ID_T>;
-    using base_t        = BitView<RANGE_T>;
+    using Base_t        = BITVIEW_T;
+    using Iterator_t    = IdCastIterator<IterBase_t, ID_T>;
+    using Sentinel_t    = SntlBase_t;
 
-    using IdIterator_t  = BitPosIterator<typename base_t::iter_t, typename base_t::sntl_t, ONES, ID_T>;
+    using Base_t::Base_t;
+    using Base_t::operator=;
 
-    using base_t::base_t;
-    using base_t::operator=;
-
-    constexpr base_t&       bitview()       noexcept { return static_cast<base_t&>(*this); }
-    constexpr base_t const& bitview() const noexcept { return static_cast<base_t const&>(*this); }
+    constexpr Base_t&       bitview()       noexcept { return static_cast<Base_t&>(*this); }
+    constexpr Base_t const& bitview() const noexcept { return static_cast<Base_t const&>(*this); }
 
     // Capacity
 
     /**
      * @return Max number of IDs that can be stored
      */
-    constexpr std::size_t capacity() const noexcept { return base_t::size(); }
+    constexpr std::size_t capacity() const noexcept { return Base_t::size(); }
 
     /**
      * @return Current number of contained IDs, determined by counting bits
@@ -45,11 +51,11 @@ public:
     {
         if constexpr (ONES)
         {
-            return base_t::count();
+            return Base_t::count();
         }
         else
         {
-            return capacity() - base_t::count();
+            return capacity() - Base_t::count();
         }
     }
 
@@ -64,12 +70,29 @@ public:
     /**
      * @brief Iterate all existing IDs. Read-only
      */
-    constexpr IdIterator_t begin() const noexcept
+    constexpr Iterator_t begin() const noexcept
     {
-        return IdIterator_t(std::begin(bitview().ints()), std::end(bitview().ints()), 0, 0);
+        if constexpr (ONES)
+        {
+            return Iterator_t{ bitview().ones().begin() };
+        }
+        else
+        {
+            return Iterator_t{ bitview().zeros().begin() };
+        }
     }
 
-    constexpr typename IdIterator_t::Sentinel end() const noexcept { return {}; }
+    constexpr Sentinel_t end() const noexcept
+    {
+        if constexpr (ONES)
+        {
+            return bitview().ones().end();
+        }
+        else
+        {
+            return bitview().zeros().end();
+        }
+    }
 
     // Element Lookup
 
@@ -142,56 +165,28 @@ public:
         }
     }
 
-    void clear()
+    void clear() noexcept
     {
-        if constexpr (ONES)
-        {
-            base_t::reset();
-        }
-        else
-        {
-            base_t::set();
-        }
+        if constexpr (ONES) { Base_t::reset(); } else { Base_t::set(); }
     }
 
 private:
 
     static constexpr id_int_t smc_emptyInt = ONES ? id_int_t(0) : ~id_int_t(0);
 
-    bool impl_contains(std::size_t const pos) const
+    bool impl_contains(std::size_t const pos) const noexcept
     {
-        if constexpr (ONES)
-        {
-            return base_t::test(pos);
-        }
-        else
-        {
-            return ! base_t::test(pos);
-        }
+        if constexpr (ONES) { return Base_t::test(pos); } else { return ! Base_t::test(pos); }
     }
 
-    void impl_insert(std::size_t const pos)
+    void impl_insert(std::size_t const pos) noexcept
     {
-        if constexpr (ONES)
-        {
-            base_t::set(pos);
-        }
-        else
-        {
-            base_t::reset(pos);
-        }
+        if constexpr (ONES) { Base_t::set(pos); } else { Base_t::reset(pos); }
     }
 
-    void impl_erase(std::size_t const pos)
+    void impl_erase(std::size_t const pos) noexcept
     {
-        if constexpr (ONES)
-        {
-            base_t::reset(pos);
-        }
-        else
-        {
-            base_t::clear(pos);
-        }
+        if constexpr (ONES) { Base_t::reset(pos); } else { Base_t::clear(pos); }
     }
 };
 
