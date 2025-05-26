@@ -27,6 +27,8 @@ class BitViewIdSet : private BITVIEW_T
                                                    typename BITVIEW_T::ZerosSntl_t>;
 public:
 
+    using int_t         = typename BITVIEW_T::int_t;
+
     using Base_t        = BITVIEW_T;
     using Iterator_t    = IdCastIterator<IterBase_t, ID_T>;
     using Sentinel_t    = SntlBase_t;
@@ -62,7 +64,7 @@ public:
     bool empty() const noexcept
     {
         return std::all_of(std::begin(bitview().ints()), std::end(bitview().ints()),
-                           [] ( id_int_t const value )  { return value == smc_emptyInt; });
+                           [] ( int_t const value )  { return value == smc_emptyInt; });
     }
 
     // Iterators
@@ -172,7 +174,7 @@ public:
 
 private:
 
-    static constexpr id_int_t smc_emptyInt = ONES ? id_int_t(0) : ~id_int_t(0);
+    static constexpr int_t smc_emptyInt = ONES ? int_t(0) : ~int_t(0);
 
     bool impl_contains(std::size_t const pos) const noexcept
     {

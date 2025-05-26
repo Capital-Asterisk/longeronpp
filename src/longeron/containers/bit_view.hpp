@@ -36,8 +36,9 @@ public:
     using OnesIter_t    = BitPosIterator< RangeIter_t, RangeSntl_t, true >;
     using OnesSntl_t    = typename OnesIter_t::Sentinel;
 
-private:
     using int_t         = std::remove_cv_t<typename std::iterator_traits<RangeIter_t>::value_type>;
+
+private:
     static_assert(std::is_unsigned_v<int_t>, "Use only unsigned types for bit manipulation");
     static constexpr int smc_bitSize = sizeof(int_t) * 8;
 
